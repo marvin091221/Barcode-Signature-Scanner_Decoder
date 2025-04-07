@@ -34,6 +34,15 @@
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-4">
+    
+    <div id="loadingIndicator" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg text-center">
+            <div class="spinner mx-auto"></div>
+            <p class="mt-4 text-lg">Loading scanner components...</p>
+            <p id="loadingProgress" class="text-sm text-gray-600">Initializing OpenCV</p>
+        </div>
+    </div>
+
     <div class="container mx-auto bg-white p-6 rounded-lg shadow-lg max-w-6xl">
         <h1 class="text-3xl font-bold text-center">Document Scanner</h1>
         <p class="text-gray-600 text-center mb-6">Upload documents to scan for barcodes and signatures</p>

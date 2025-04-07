@@ -1,4 +1,33 @@
+// DOM Elements
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const fileList = document.getElementById('fileList');
+const errorMessage = document.getElementById('errorMessage');
+const scanBtn = document.getElementById('scanBtn');
+const resultsSection = document.getElementById('resultsSection');
+const resultsBody = document.getElementById('resultsBody');
+const progressContainer = document.getElementById('progressContainer');
+const progressText = document.getElementById('progressText');
+const progressPercent = document.getElementById('progressPercent');
+const progressBar = document.getElementById('progressBar');
+const exportBtn = document.getElementById('exportBtn');
+const clearResultsBtn = document.getElementById('clearResultsBtn');
+const barcodeDetails = document.getElementById('barcodeDetails');
+const barcodeDetailsContent = document.getElementById('barcodeDetailsContent');
+const processingCanvas = document.getElementById('processingCanvas');
+const processingCtx = processingCanvas.getContext('2d');
+const result = document.getElementById('result');
+
+const loadingIndicator = document.getElementById('loadingIndicator');
+const loadingProgress = document.getElementById('loadingProgress');
+
+// State
+let filesToProcess = [];
+let allBarcodeResults = [];
+let signatureModel;
+let isModelLoaded = false;
 let reader = null;
+let cvReady = false;
 
 async function initializeDynamsoft() {
     try {
@@ -22,29 +51,6 @@ async function initializeDynamsoft() {
         throw ex;
     }
 }
-
-// DOM Elements
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-const fileList = document.getElementById('fileList');
-const errorMessage = document.getElementById('errorMessage');
-const scanBtn = document.getElementById('scanBtn');
-const resultsSection = document.getElementById('resultsSection');
-const resultsBody = document.getElementById('resultsBody');
-const progressContainer = document.getElementById('progressContainer');
-const progressText = document.getElementById('progressText');
-const progressPercent = document.getElementById('progressPercent');
-const progressBar = document.getElementById('progressBar');
-const exportBtn = document.getElementById('exportBtn');
-const clearResultsBtn = document.getElementById('clearResultsBtn');
-const barcodeDetails = document.getElementById('barcodeDetails');
-const barcodeDetailsContent = document.getElementById('barcodeDetailsContent');
-const processingCanvas = document.getElementById('processingCanvas');
-const processingCtx = processingCanvas.getContext('2d');
-
-// State
-let filesToProcess = [];
-let allBarcodeResults = [];
 
 // Event Listeners
 dropZone.addEventListener('click', () => fileInput.click());
@@ -79,6 +85,30 @@ fileInput.addEventListener('change', (e) => {
 scanBtn.addEventListener('click', processFiles);
 exportBtn.addEventListener('click', exportResults);
 clearResultsBtn.addEventListener('click', clearResults);
+
+async function initializeAll() {
+    loadingIndicator.classList.remove('hidden');
+    
+    try {
+        // loadingProgress.textContent = 'Loading OpenCV...';
+        // await cvLoadPromise;
+        
+        loadingProgress.textContent = 'Initializing barcode scanner...';
+        await initializeDynamsoft();
+
+        // loadingProgress.textContent = 'Loading signature model...';
+        // await loadSignatureModel();
+        
+        loadingProgress.textContent = 'Ready to scan!';
+        setTimeout(() => loadingIndicator.classList.add('hidden'), 1000);
+    } catch (error) {
+        loadingProgress.textContent = `Error: ${error.message}`;
+        showError("Initialization failed. Please refresh the page.");
+    }
+}
+
+ // Call this when the page loads
+ window.addEventListener('DOMContentLoaded', initializeAll);
 
 // Functions
 function handleFiles(files) {
@@ -164,15 +194,13 @@ async function processFiles() {
             
             try {
                 // Process the file with Dynamsoft
-                // const result = await processImageWithDynamsoft(file);
-                // Process the file with Dynamsoft
                 let result;
                 if (file.type === 'application/pdf') {
-                    result = await processPDFWithDynamsoft(file);
+                    // Use enhanced region detection for PDFs
+                    result = await processPDFWithRegionDetection(file);
                 } else {
                     result = await processImageWithDynamsoft(file);
                 }
-                
                 // Add to results table
                 addResultToTable(file.name, result);
                 
@@ -211,6 +239,36 @@ async function processFiles() {
     }
 }
 
+// // Temporary function to show the canvas for debugging
+// function debugShowPage(canvas) {
+//     try {
+//         // Create a preview div if it doesn't exist
+//         let debugDiv = document.getElementById('debugPreview');
+//         if (!debugDiv) {
+//             debugDiv = document.createElement('div');
+//             debugDiv.id = 'debugPreview';
+//             debugDiv.style.position = 'fixed';
+//             debugDiv.style.bottom = '20px';
+//             debugDiv.style.right = '20px';
+//             debugDiv.style.zIndex = '1000';
+//             debugDiv.style.backgroundColor = 'white';
+//             debugDiv.style.padding = '10px';
+//             debugDiv.style.border = '1px solid #ccc';
+//             debugDiv.style.maxHeight = '300px';
+//             debugDiv.style.overflow = 'auto';
+//             document.body.appendChild(debugDiv);
+//         }
+        
+//         // Add the canvas image to the div
+//         const img = document.createElement('img');
+//         img.src = canvas.toDataURL();
+//         img.style.maxWidth = '200px';
+//         debugDiv.appendChild(img);
+//     } catch (error) {
+//         console.error('Debug preview error:', error);
+//     }
+// }
+
 // Function to process PDF files with Dynamsoft
 async function processPDFWithDynamsoft(file) {
     const result = {
@@ -239,32 +297,41 @@ async function processPDFWithDynamsoft(file) {
         // Load the PDF document
         const pdfDoc = await pdfjsLib.getDocument({data: pdfData}).promise;
         const numPages = pdfDoc.numPages;
+
+        
         
         // Process each page of the PDF
         for (let pageNum = 1; pageNum <= numPages; pageNum++) {
             updateProgress(((pageNum - 1) / numPages) * 100, `Processing page ${pageNum} of ${numPages} in ${file.name}`);
-            
+                        
             // Get the page
             const page = await pdfDoc.getPage(pageNum);
             
             // Create a canvas for rendering the PDF page
-            const viewport = page.getViewport({scale: 1.5}); // Adjust scale for better barcode detection
+            const viewport = page.getViewport({scale: 5.0});
+
             const canvas = document.createElement('canvas');
             canvas.width = viewport.width;
             canvas.height = viewport.height;
-            const ctx = canvas.getContext('2d');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+            // Improve rendering quality
+            ctx.imageSmoothingEnabled = false;
             
             // Render the PDF page on the canvas
             await page.render({
                 canvasContext: ctx,
                 viewport: viewport
             }).promise;
+
+            // // Debugging line to show the rendered page
+            // debugShowPage(canvas); 
             
             // Process the rendered page
             if (!reader) await initializeDynamsoft();
             
             // Convert canvas to blob URL for Dynamsoft to process
-            const dataUrl = canvas.toDataURL('image/png');
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.99);
             const barcodeResults = await reader.decode(dataUrl);
             
             // Map barcode results similar to processImageWithDynamsoft
@@ -294,6 +361,7 @@ async function processPDFWithDynamsoft(file) {
             
             // Add barcodes from this page to the result
             result.barcodes.push(...pageBarcodes);
+            result.signature = result.signature || await detectSignature(canvas);
             
             // Check for signature on this page
             const hasSignature = await detectSignature(canvas);
@@ -327,6 +395,276 @@ async function processPDFWithDynamsoft(file) {
     }
     
     return result;
+}
+
+// Function to detect barcodes in PDF files using region detection
+async function processPDFWithRegionDetection(file) {
+    // Clone the original result structure
+    const result = await processPDFWithDynamsoft(file);
+    
+    // If no barcodes were found or there's an error, perform region-based detection
+    if (result.barcodes.length === 0 && !result.error) {
+        try {
+            // Load the PDF.js library
+            const pdfjsLib = window.pdfjsLib;
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.worker.min.js';
+            
+            // Create a FileReader to read the file content
+            const fileReader = new FileReader();
+            
+            // Read the PDF file as an ArrayBuffer
+            const pdfData = await new Promise((resolve, reject) => {
+                fileReader.onload = () => resolve(fileReader.result);
+                fileReader.onerror = reject;
+                fileReader.readAsArrayBuffer(file);
+            });
+            
+            // Load the PDF document
+            const pdfDoc = await pdfjsLib.getDocument({data: pdfData}).promise;
+            const numPages = pdfDoc.numPages;
+            
+            // Update progress to indicate region detection
+            updateProgress(0, `No barcodes found. Starting region detection in ${file.name}`);
+            
+            // Process each page of the PDF with region detection
+            for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+                updateProgress(((pageNum - 1) / numPages) * 100, 
+                    `Performing region detection on page ${pageNum} of ${numPages} in ${file.name}`);
+                
+                // Get the page
+                const page = await pdfDoc.getPage(pageNum);
+                
+                // Create a canvas for rendering the PDF page with higher resolution
+                const viewport = page.getViewport({scale: 5.0}); // Increased scale for better detection
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                
+                // Render the PDF page on the canvas
+                await page.render({
+                    canvasContext: ctx,
+                    viewport: viewport
+                }).promise;
+
+                // Scan the entire page
+                regions.unshift({
+                    x: 0, 
+                    y: 0, 
+                    width: canvas.width, 
+                    height: canvas.height
+                });
+                
+                // Define regions to scan (common areas where barcodes might be found)
+                const regions = [
+                    // Top region (expanded)
+                    {x: 0, y: 0, width: canvas.width, height: canvas.height * 0.9},
+                    // Bottom region (expanded)
+                    {x: 0, y: canvas.height * 0.7, width: canvas.width, height: canvas.height * 0.9},
+                    // Left side region
+                    {x: 0, y: 0, width: canvas.width * 0.9, height: canvas.height},
+                    // Right side region
+                    {x: canvas.width * 0.7, y: 0, width: canvas.width * 0.6, height: canvas.height},
+                    // Center regions (multiple)
+                    {x: canvas.width * 0.2, y: canvas.height * 0.2, width: canvas.width * 0.9, height: canvas.height * 0.9},
+                    {x: canvas.width * 0.3, y: canvas.height * 0.3, width: canvas.width * 0.7, height: canvas.height * 0.7}
+                ];
+                
+                // Apply different processing techniques for each region
+                for (let i = 0; i < regions.length; i++) {
+                    const region = regions[i];
+                    
+                    // Create a canvas for the region
+                    const regionCanvas = document.createElement('canvas');
+                    regionCanvas.width = region.width;
+                    regionCanvas.height = region.height;
+                    const regionCtx = regionCanvas.getContext('2d');
+                    
+                    // Draw the region onto the new canvas
+                    regionCtx.drawImage(
+                        canvas, 
+                        region.x, region.y, region.width, region.height,
+                        0, 0, region.width, region.height
+                    );
+                    
+                    // Apply image processing to enhance barcode visibility
+                    await enhanceRegionForBarcodeDetection(regionCanvas);
+                    
+                    // Scan the enhanced region for barcodes
+                    if (!reader) await initializeDynamsoft();
+                    
+                    // Update runtime settings to be more sensitive for region detection
+                    let settings = await reader.getRuntimeSettings();
+                    settings.expectedBarcodesCount = 512; // Increase expected barcode count
+                    settings.barcodeFormatIds = Dynamsoft.DBR.EnumBarcodeFormat.BF_CODE_39 | Dynamsoft.DBR.EnumBarcodeFormat.BF_ALL;
+                    settings.deblurLevel = 9; // Maximum deblur level
+                    settings.scaleDownThreshold = 3000; // Allow processing larger images
+                    settings.timeout = 20000; // Increase timeout
+                    await reader.updateRuntimeSettings(settings);
+                    
+                    // Scan the region
+                    const regionUrl = regionCanvas.toDataURL('image/jpeg', 0.99);
+                    const regionResults = await reader.decode(regionUrl);
+                    
+                    // Reset reader settings after scanning
+                    await reader.resetRuntimeSettings();
+                    settings = await reader.getRuntimeSettings();
+                    settings.barcodeFormatIds = Dynamsoft.DBR.EnumBarcodeFormat.BF_CODE_39 | Dynamsoft.DBR.EnumBarcodeFormat.BF_ALL;
+                    settings.deblurLevel = 9;
+                    settings.expectedBarcodesCount = 0;
+                    await reader.updateRuntimeSettings(settings);
+                    
+                    // Convert region coordinates to full page coordinates
+                    const regionBarcodes = regionResults.map(b => {
+                        const points = b.localizationResult?.resultPoints || [];
+                        
+                        // Adjust coordinates to main canvas
+                        const adjustedPoints = points.map(point => {
+                            return [point[0] + region.x, point[1] + region.y];
+                        });
+                        
+                        // Calculate center point
+                        const centerX = adjustedPoints.length > 0 ? 
+                            adjustedPoints.reduce((sum, p) => sum + p[0], 0) / adjustedPoints.length : 0;
+                        const centerY = adjustedPoints.length > 0 ? 
+                            adjustedPoints.reduce((sum, p) => sum + p[1], 0) / adjustedPoints.length : 0;
+                        
+                        return {
+                            code: b.barcodeText,
+                            format: b.barcodeFormatString,
+                            confidence: b.localizationResult?.confidence || 0,
+                            coordinates: adjustedPoints,
+                            centerX,
+                            centerY,
+                            visualization: createDynamsoftBarcodeVisualization(canvas, {
+                                coordinates: adjustedPoints,
+                                format: b.barcodeFormatString,
+                                code: b.barcodeText,
+                                confidence: b.localizationResult?.confidence || 0
+                            }),
+                            page: pageNum,
+                            detectionMethod: 'region',
+                            regionIndex: i
+                        };
+                    });
+                    
+                    // Add barcodes found in this region
+                    result.barcodes.push(...regionBarcodes);
+                }
+            }
+            
+            // Sort barcodes by page, then by position (top to bottom, then left to right)
+            result.barcodes.sort((a, b) => {
+                // First sort by page number
+                if (a.page !== b.page) {
+                    return a.page - b.page;
+                }
+                
+                // Define a threshold for considering barcodes to be on the same "row"
+                const rowThreshold = 30; // pixels
+                
+                // If barcodes are roughly on the same horizontal line, sort by X
+                if (Math.abs(a.centerY - b.centerY) < rowThreshold) {
+                    return a.centerX - b.centerX; // Left to right
+                }
+                
+                // Otherwise sort by Y coordinate
+                return a.centerY - b.centerY; // Top to bottom
+            });
+            
+            // Remove duplicates (same barcode detected in multiple regions)
+            result.barcodes = removeDuplicateBarcodes(result.barcodes);
+            
+        } catch (error) {
+            console.error("Error in region detection:", error);
+            // Don't update the error if we already have results from the primary method
+            if (result.barcodes.length === 0) {
+                result.error = "Region detection failed: " + error.message;
+            }
+        }
+    }
+    
+    return result;
+}
+
+// Function to enhance image regions for better barcode detection
+async function enhanceRegionForBarcodeDetection(canvas) {
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    // Apply multiple image processing techniques
+    
+    // 1. Increase contrast
+    for (let i = 0; i < data.length; i += 4) {
+        const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+        const newValue = avg > 128 ? 255 : 0; // Binarization for high contrast
+        
+        data[i] = newValue;     // Red
+        data[i + 1] = newValue; // Green
+        data[i + 2] = newValue; // Blue
+    }
+    
+    // 2. Apply sharpening filter
+    const original = new Uint8ClampedArray(data);
+    const kernel = [
+        0, -1, 0,
+        -1, 5, -1,
+        0, -1, 0
+    ];
+    
+    // Skip edges to avoid index out of bounds
+    for (let y = 1; y < canvas.height - 1; y++) {
+        for (let x = 1; x < canvas.width - 1; x++) {
+            const pixelIndex = (y * canvas.width + x) * 4;
+            
+            for (let channel = 0; channel < 3; channel++) { // Only apply to RGB channels
+                let sum = 0;
+                
+                for (let ky = -1; ky <= 1; ky++) {
+                    for (let kx = -1; kx <= 1; kx++) {
+                        const kernelIndex = (ky + 1) * 3 + (kx + 1);
+                        const sourceIndex = pixelIndex + (ky * canvas.width + kx) * 4 + channel;
+                        
+                        sum += original[sourceIndex] * kernel[kernelIndex];
+                    }
+                }
+                
+                // Clamp the value to 0-255
+                data[pixelIndex + channel] = Math.max(0, Math.min(255, sum));
+            }
+        }
+    }
+    
+    // Apply the processed image data back to the canvas
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
+}
+
+// Function to remove duplicate barcodes
+function removeDuplicateBarcodes(barcodes) {
+    const uniqueBarcodes = [];
+    const seenCodes = new Set();
+    
+    for (const barcode of barcodes) {
+        // Create a unique key combining barcode value and page
+        const key = `${barcode.code}_${barcode.page}`;
+        
+        if (!seenCodes.has(key)) {
+            seenCodes.add(key);
+            uniqueBarcodes.push(barcode);
+        } else {
+            // If we've seen this barcode before, keep the one with higher confidence
+            const existingIndex = uniqueBarcodes.findIndex(b => 
+                b.code === barcode.code && b.page === barcode.page);
+            
+            if (existingIndex >= 0 && barcode.confidence > uniqueBarcodes[existingIndex].confidence) {
+                uniqueBarcodes[existingIndex] = barcode;
+            }
+        }
+    }
+    
+    return uniqueBarcodes;
 }
 
 // Function to process Image files with Dynamsoft 
@@ -403,7 +741,7 @@ async function createCanvasFromFile(file) {
             const canvas = document.createElement('canvas');
             canvas.width = img.width;
             canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
             ctx.drawImage(img, 0, 0);
             resolve(canvas);
         };
