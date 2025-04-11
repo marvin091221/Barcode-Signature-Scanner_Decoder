@@ -98,6 +98,9 @@
                     <button id="clearResultsBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
                         Clear Results
                     </button>
+                    <!-- <button id="toggleDebugBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                        Toggle Debug View
+                    </button> -->
                 </div>
             </div>
             
