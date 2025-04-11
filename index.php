@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Barcode & Signature Scanner</title>
+    <title>Barcode & Signature Scanner</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.1.2/dist/tailwind.min.css" rel="stylesheet">
 
     <!-- Signature Scanner -->
@@ -98,9 +98,6 @@
                     <button id="clearResultsBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
                         Clear Results
                     </button>
-                    <!-- <button id="toggleDebugBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                        Toggle Debug View
-                    </button> -->
                 </div>
             </div>
             

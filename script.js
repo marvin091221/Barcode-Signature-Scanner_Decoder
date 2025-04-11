@@ -482,13 +482,6 @@ async function processPDFWithRegionDetection(file) {
                     centerY,
                     hasSignature,
                     page: pageNum,
-                    // visualization: createDynamsoftBarcodeVisualization(canvas, {
-                    //     coordinates: points,
-                    //     format: barcode.barcodeFormatString,
-                    //     code: barcode.barcodeText,
-                    //     confidence: barcode.localizationResult?.confidence || 0,
-                    //     hasSignature
-                    // })
                 });
 
                 if (hasSignature) result.signature = true;
@@ -501,61 +494,12 @@ async function processPDFWithRegionDetection(file) {
             if (Math.abs(a.centerY - b.centerY) < rowThreshold) return a.centerX - b.centerX;
             return a.centerY - b.centerY;
         });
-
-        result.barcodes = removeDuplicateBarcodes(result.barcodes);
     } catch (error) {
         console.error("Row-based scanning failed:", error);
         result.error = error.message;
     }
 
     return result;
-}
-
-// Function to enhance image regions for better barcode detection
-async function enhanceRegionForBarcodeDetection(canvas) {
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    
-    // Apply simple threshold/binarization
-    for (let i = 0; i < data.length; i += 4) {
-        const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-        const newValue = avg > 128 ? 255 : 0; // Binarization for high contrast
-        
-        data[i] = newValue;     // Red
-        data[i + 1] = newValue; // Green
-        data[i + 2] = newValue; // Blue
-    }
-    
-     // Apply the processed image data back to the canvas
-     ctx.putImageData(imageData, 0, 0);
-     return canvas;
- }
-
-// Function to remove duplicate barcodes
-function removeDuplicateBarcodes(barcodes) {
-    const uniqueBarcodes = [];
-    const seenCodes = new Set();
-    
-    for (const barcode of barcodes) {
-        // Create a unique key combining barcode value and page
-        const key = `${barcode.code}_${barcode.page}`;
-        
-        if (!seenCodes.has(key)) {
-            seenCodes.add(key);
-            uniqueBarcodes.push(barcode);
-        } else {
-            // If we've seen this barcode before, keep the one with higher confidence
-            const existingIndex = uniqueBarcodes.findIndex(b => 
-                b.code === barcode.code && b.page === barcode.page);
-            
-            if (existingIndex >= 0 && barcode.confidence > uniqueBarcodes[existingIndex].confidence) {
-                uniqueBarcodes[existingIndex] = barcode;
-            }
-        }
-    }
-    
-    return uniqueBarcodes;
 }
 
 // Function to process Image files with Dynamsoft 
@@ -641,127 +585,7 @@ async function processImageWithDynamsoft(file) {
     return result; // Returns barcodes in original detection order
 }
 
-async function createCanvasFromFile(file) {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            ctx.drawImage(img, 0, 0);
-            URL.revokeObjectURL(img.src); // Add this line
-            resolve(canvas);
-        };
-        img.onerror = reject; // Add error handling
-        img.src = URL.createObjectURL(file);
-    });
-}
-
-function sortBarcodes(barcodes) {
-    return barcodes.sort((a, b) => {
-        // First sort by page number if available
-        if (a.page !== undefined && b.page !== undefined && a.page !== b.page) {
-            return a.page - b.page;
-        }
-        
-        // Define a threshold for considering barcodes to be on the same "row"
-        const rowThreshold = 30; // pixels
-        
-        // If barcodes are roughly on the same horizontal line, sort by X
-        if (Math.abs(a.centerY - b.centerY) < rowThreshold) {
-            return a.centerX - b.centerX; // Left to right
-        }
-        
-        // Otherwise sort by Y coordinate
-        return a.centerY - b.centerY; // Top to bottom
-    });
-}
-
-// Function to create a visual overlay of detected barcodes
-function createDynamsoftBarcodeVisualization(canvas, barcode) {
-    const visualCanvas = document.createElement('canvas');
-    visualCanvas.width = canvas.width;
-    visualCanvas.height = canvas.height;
-    const ctx = visualCanvas.getContext('2d', { willReadFrequently: true });
-    
-    // Draw original image
-    ctx.drawImage(canvas, 0, 0);
-
-    // Add null checks
-    if (!barcode.coordinates || barcode.coordinates.length < 4) {
-        return canvas.toDataURL(); // Return original if invalid
-    }
-    
-    // Draw bounding box around barcode
-    if (barcode.coordinates && barcode.coordinates.length >= 4) {
-        const points = barcode.coordinates;
-
-        // Calculate barcode boundaries
-        const minX = Math.min(...points.map(p => p[0]));
-        const maxX = Math.max(...points.map(p => p[0]));
-        const minY = Math.min(...points.map(p => p[1]));
-        const maxY = Math.max(...points.map(p => p[1]));
-
-        ctx.strokeStyle = '#00FF00';
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.moveTo(points[0][0], points[0][1]);
-        for (let i = 1; i < points.length; i++) {
-            ctx.lineTo(points[i][0], points[i][1]);
-        }
-        ctx.closePath();
-        ctx.stroke();
-
-        // Draw signature detection area
-        const signatureWidth = Math.min((maxX - minX) * 2, canvas.width - maxX);
-        const signatureHeight = (maxY - minY) * 1.5;
-
-        ctx.strokeStyle = 'rgba(255, 165, 0, 0.3)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(
-            searchStartX,
-            rowStartY,
-            signatureWidth,
-            signatureHeight
-        )
-        
-        // // Add barcode label
-        // ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        // ctx.fillRect(minX, minY - 20, 240, 20);
-        // ctx.fillStyle = '#FFFFFF';
-        // ctx.font = '12px Arial';
-        // ctx.fillText(`${barcode.format}: ${barcode.code.substring(0, 20)}...`, 
-        //             minX + 5, minY - 5);
-
-        // // Add signature indicator
-        // ctx.fillStyle = barcode.hasSignature ? 'rgba(0, 150, 0, 0.8)' : 'rgba(200, 0, 0, 0.8)';
-        // ctx.fillRect(minX, minY - 40, 120, 20);
-        // ctx.fillStyle = '#FFFFFF';
-        // ctx.font = 'bold 12px Arial';
-        // ctx.fillText(`Signature: ${barcode.hasSignature ? 'YES' : 'NO'}`, 
-        //             minX + 5, minY - 25);
-
-        // Draw entire row highlight
-        ctx.fillStyle = 'rgba(255, 165, 0, 0.1)';
-        ctx.fillRect(
-            0, 
-            searchStartY,
-            canvas.width,
-            searchHeight
-        );
-
-        // Add text label for row scanning
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(5, searchStartY + 5, 160, 20);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 12px Arial';
-        ctx.fillText(`Scanning entire row`, 10, searchStartY + 20);
-    }
-    
-    return visualCanvas.toDataURL();
-}
-
+// Function to create a canvas from a file
 async function processCanvas(canvas, result, sourceInfo) {
     // Scan for barcodes
     const barcodeResults = await scanBarcodesOnCanvas(canvas);
@@ -899,6 +723,145 @@ async function processCanvas(canvas, result, sourceInfo) {
 //     });
 // }
 
+// function detectSignature(canvas, barcodeCoordinates) {
+//     if (!barcodeCoordinates || barcodeCoordinates.length < 4) {
+//         console.warn("⚠️ Barcode coordinates missing or invalid");
+//         return { detected: false };
+//     }
+
+//     // Calculate barcode boundaries
+//     const minX = Math.min(...barcodeCoordinates.map(p => p[0]));
+//     const maxX = Math.max(...barcodeCoordinates.map(p => p[0]));
+//     const minY = Math.min(...barcodeCoordinates.map(p => p[1]));
+//     const maxY = Math.max(...barcodeCoordinates.map(p => p[1]));
+//     const barcodeHeight = maxY - minY;
+//     const barcodeWidth = maxX - minX;
+
+//     // Configuration for signature scanning
+//     const scanOptions = {
+//         pixelThreshold: 120,       // Higher threshold for darker signatures
+//         minDensity: 0.03,         // Lower density threshold
+//         minStrokeDensity: 0.01,    // Lower stroke density threshold
+//         minSignatureWidth: 30,     // Smaller width for signature strokes
+//         minBlocks: 2               // Require at least 2 potential signature blocks
+//     };
+
+//     // 1. Full Row Scan with expanded area
+//     const rowPadding = Math.max(10, barcodeHeight * 0.5); // Increased padding
+//     const rowStartY = Math.max(0, minY - rowPadding);
+//     // const rowEndY = Math.min(canvas.height, maxY + rowPadding);
+//     // const rowHeight = Math.max(30, rowEndY - rowStartY); // Minimum 20px height
+
+//     const verticalMargin = 30;
+//     const rowY = Math.max(0, minY - verticalMargin);
+//     const rowHeight = Math.min(canvas.height - rowY, barcodeHeight + verticalMargin * 3.1);
+
+//     // 2. Expanded Right-to-Center Scan
+//     const rightSideStartX = Math.max(0, maxX - (barcodeWidth * 0.1)); // Start left of barcode edge
+//     const rightSideWidth = Math.min(
+//         canvas.width * 1, // Scan up to 100% of page width
+//         canvas.width - rightSideStartX
+//     );
+//     const signatureFocusWidth = Math.max(
+//         scanOptions.minSignatureWidth * 2, // Wider minimum area
+//         Math.min(barcodeWidth * 4, rightSideWidth) 
+//     );
+
+//     // Validate dimensions
+//     if (signatureFocusWidth <= 0 || rowHeight <= 0) {
+//         console.warn("Invalid scan area dimensions", {
+//             width: signatureFocusWidth,
+//             height: rowHeight
+//         });
+//         return { detected: false };
+//     }
+
+//     // Create and draw canvases
+//     const rowCanvas = document.createElement('canvas');
+//     rowCanvas.width = Math.max(1, canvas.width);
+//     rowCanvas.height = Math.max(1, rowHeight);
+//     const rowCtx = rowCanvas.getContext('2d');
+    
+//     const focusCanvas = document.createElement('canvas');
+//     focusCanvas.width = Math.max(1, signatureFocusWidth);
+//     focusCanvas.height = Math.max(1, rowHeight);
+//     const focusCtx = focusCanvas.getContext('2d');
+
+//     try {
+//         // Draw scan areas
+//         rowCtx.drawImage(
+//             canvas,
+//             0, rowStartY, canvas.width, rowHeight,
+//             0, 0, canvas.width, rowHeight
+//         );
+        
+//         focusCtx.drawImage(
+//             canvas,
+//             rightSideStartX, rowStartY, signatureFocusWidth, rowHeight,
+//             0, 0, signatureFocusWidth, rowHeight
+//         );
+
+//         // Debug visualization 
+//         // Cover the whole row
+//         rowCanvas.style.border = "2px solid blue";
+//         rowCanvas.style.width = "100%";
+//         rowCanvas.style.marginBottom = "5px";
+//         document.body.appendChild(rowCanvas);
+
+//         // Focus area for signature detection in the right side
+//         focusCanvas.style.border = "2px solid red";
+//         focusCanvas.style.width = "100%";
+//         focusCanvas.style.marginBottom = "20px";
+//         document.body.appendChild(focusCanvas);
+
+//         // Analyze both areas with enhanced options
+//         const rowResult = analyzeSignatureArea(
+//             rowCtx.getImageData(0, 0, canvas.width, rowHeight),
+//             canvas.width,
+//             rowHeight,
+//             scanOptions
+//         );
+        
+//         const focusResult = analyzeSignatureArea(
+//             focusCtx.getImageData(0, 0, signatureFocusWidth, rowHeight),
+//             signatureFocusWidth,
+//             rowHeight,
+//             scanOptions
+//         );
+
+//         console.log("Enhanced Signature Analysis", {
+//             fullRow: rowResult,
+//             focusArea: focusResult,
+//             scanAreas: {
+//                 fullRow: { width: canvas.width, height: rowHeight },
+//                 focusArea: { 
+//                     x: rightSideStartX, 
+//                     width: signatureFocusWidth, 
+//                     height: rowHeight 
+//                 }
+//             },
+//             barcodeDimensions: {
+//                 width: barcodeWidth,
+//                 height: barcodeHeight
+//             }
+//         });
+
+//         // More lenient detection - consider focus area more important
+//         return {
+//             detected: focusResult.detected || (rowResult.detected && rowResult.confidence > 15),
+//             scans: {
+//                 fullRow: rowResult,
+//                 focusArea: focusResult
+//             },
+//             confidence: Math.max(rowResult.confidence, focusResult.confidence)
+//         };
+
+//     } catch (error) {
+//         console.error("Signature detection error:", error);
+//         return { detected: false };
+//     }
+// }
+
 // Function to detect signature in a specific area of the canvas ========================== WORKING =============================
 function detectSignature(canvas, barcodeCoordinates) {
     if (!barcodeCoordinates || barcodeCoordinates.length < 4) {
@@ -906,112 +869,105 @@ function detectSignature(canvas, barcodeCoordinates) {
         return { detected: false };
     }
 
-    // Calculate barcode boundaries
-    const minX = Math.min(...barcodeCoordinates.map(p => p[0]));
-    const maxX = Math.max(...barcodeCoordinates.map(p => p[0]));
-    const minY = Math.min(...barcodeCoordinates.map(p => p[1]));
-    const maxY = Math.max(...barcodeCoordinates.map(p => p[1]));
-    const barcodeHeight = maxY - minY;
-    const barcodeWidth = maxX - minX;
+    // Calculate barcode boundaries with proper validation
+    const minX = Math.max(0, Math.min(...barcodeCoordinates.map(p => p[0])));
+    const maxX = Math.min(canvas.width, Math.max(...barcodeCoordinates.map(p => p[0])));
+    const minY = Math.max(0, Math.min(...barcodeCoordinates.map(p => p[1])));
+    const maxY = Math.min(canvas.height, Math.max(...barcodeCoordinates.map(p => p[1])));
+    
+    // Ensure valid dimensions
+    const barcodeHeight = Math.max(1, maxY - minY);
+    const barcodeWidth = Math.max(1, maxX - minX);
 
     // Configuration for signature scanning
     const scanOptions = {
-        pixelThreshold: 120,       // Higher threshold for darker signatures
-        minDensity: 0.03,         // Lower density threshold
-        minStrokeDensity: 0.01,    // Lower stroke density threshold
+        pixelThreshold: 200,       // Higher threshold for darker signatures
+        minDensity: 0.03,          // Lower density threshold
+        minStrokeDensity: 0.005,   // Lower stroke density threshold
         minSignatureWidth: 30,     // Smaller width for signature strokes
-        minBlocks: 2               // Require at least 2 potential signature blocks
+        minBlocks: 2,              // Require at least 2 potential signature blocks
+        maxTextLikeDensity: 0.08,
+        minStrokeVariation: 0.3            
     };
 
-    // 1. Full Row Scan with expanded area
-    const rowPadding = Math.max(20, barcodeHeight * 0.5); // Increased padding
-    const rowStartY = Math.max(0, minY - rowPadding);
-    const rowEndY = Math.min(canvas.height, maxY + rowPadding);
-    const rowHeight = Math.max(30, rowEndY - rowStartY); // Minimum 20px height
-
-    // 2. Expanded Right-to-Center Scan
-    const rightSideStartX = Math.max(0, maxX - (barcodeWidth * 0.5)); // Start left of barcode edge
-    const rightSideWidth = Math.min(
-        canvas.width * 0.6, // Scan up to 60% of page width
-        canvas.width - rightSideStartX
+    // Calculate signature area with proper bounds checking
+    const signatureAreaWidth = Math.min(
+        canvas.width * 1,
+        Math.max(barcodeWidth * 2, 450)
     );
-    const signatureFocusWidth = Math.max(
-        scanOptions.minSignatureWidth * 2, // Wider minimum area
-        Math.min(barcodeWidth * 4, rightSideWidth) // Up to 4x barcode width
+    
+    const signatureAreaX = Math.min(
+        canvas.width - signatureAreaWidth,
+        Math.max(0, maxX + (barcodeWidth * 0.7))
+    );
+    
+    // Ensure minimum height and proper bounds
+    const signatureAreaHeight = Math.max(
+        100,
+        Math.min(
+            barcodeHeight * 7,
+            canvas.height * 0.3
+        )
+    );
+    
+    const signatureAreaY = Math.max(
+        0,
+        Math.min(
+            canvas.height - signatureAreaHeight,
+            minY - (barcodeHeight * 0.2)
+        )
     );
 
-    // Validate dimensions
-    if (signatureFocusWidth <= 0 || rowHeight <= 0) {
-        console.warn("Invalid scan area dimensions", {
-            width: signatureFocusWidth,
-            height: rowHeight
+    // Final validation of dimensions
+    if (signatureAreaWidth <= 0 || signatureAreaHeight <= 0) {
+        console.warn("Invalid signature area dimensions", {
+            width: signatureAreaWidth,
+            height: signatureAreaHeight
         });
         return { detected: false };
     }
 
-    // Create and draw canvases
-    const rowCanvas = document.createElement('canvas');
-    rowCanvas.width = Math.max(1, canvas.width);
-    rowCanvas.height = Math.max(1, rowHeight);
-    const rowCtx = rowCanvas.getContext('2d');
-    
-    const focusCanvas = document.createElement('canvas');
-    focusCanvas.width = Math.max(1, signatureFocusWidth);
-    focusCanvas.height = Math.max(1, rowHeight);
-    const focusCtx = focusCanvas.getContext('2d');
+    // Create canvas with validated dimensions
+    const signatureCanvas = document.createElement('canvas');
+    signatureCanvas.width = Math.max(1, Math.floor(signatureAreaWidth));
+    signatureCanvas.height = Math.max(1, Math.floor(signatureAreaHeight));
+    const signatureCtx = signatureCanvas.getContext('2d');
 
     try {
-        // Draw scan areas
-        rowCtx.drawImage(
+        // Draw the signature area
+        signatureCtx.drawImage(
             canvas,
-            0, rowStartY, canvas.width, rowHeight,
-            0, 0, canvas.width, rowHeight
-        );
-        
-        focusCtx.drawImage(
-            canvas,
-            rightSideStartX, rowStartY, signatureFocusWidth, rowHeight,
-            0, 0, signatureFocusWidth, rowHeight
+            Math.floor(signatureAreaX), 
+            Math.floor(signatureAreaY), 
+            Math.floor(signatureAreaWidth), 
+            Math.floor(signatureAreaHeight),
+            0, 
+            0, 
+            Math.floor(signatureAreaWidth), 
+            Math.floor(signatureAreaHeight)
         );
 
-        // Debug visualization 
-        // Cover the whole row
-        rowCanvas.style.border = "2px solid blue";
-        rowCanvas.style.width = "100%";
-        rowCanvas.style.marginBottom = "5px";
-        document.body.appendChild(rowCanvas);
+        // // For debugging - show the analyzed area
+        // signatureCanvas.style.border = "2px solid green";
+        // signatureCanvas.style.width = "100%";
+        // signatureCanvas.style.marginBottom = "20px";
+        // document.body.appendChild(signatureCanvas);
 
-        // Focus area for signature detection in the right side
-        focusCanvas.style.border = "2px solid red";
-        focusCanvas.style.width = "100%";
-        focusCanvas.style.marginBottom = "20px";
-        document.body.appendChild(focusCanvas);
-
-        // Analyze both areas with enhanced options
-        const rowResult = analyzeSignatureArea(
-            rowCtx.getImageData(0, 0, canvas.width, rowHeight),
-            canvas.width,
-            rowHeight,
-            scanOptions
-        );
-        
-        const focusResult = analyzeSignatureArea(
-            focusCtx.getImageData(0, 0, signatureFocusWidth, rowHeight),
-            signatureFocusWidth,
-            rowHeight,
+        // Analyze the area
+        const result = analyzeSignatureArea(
+            signatureCtx.getImageData(0, 0, signatureCanvas.width, signatureCanvas.height),
+            signatureCanvas.width,
+            signatureCanvas.height,
             scanOptions
         );
 
-        console.log("Enhanced Signature Analysis", {
-            fullRow: rowResult,
-            focusArea: focusResult,
-            scanAreas: {
-                fullRow: { width: canvas.width, height: rowHeight },
-                focusArea: { 
-                    x: rightSideStartX, 
-                    width: signatureFocusWidth, 
-                    height: rowHeight 
-                }
+        console.log("Signature Analysis Result", {
+            result,
+            scanArea: {
+                x: signatureAreaX,
+                y: signatureAreaY,
+                width: signatureAreaWidth,
+                height: signatureAreaHeight
             },
             barcodeDimensions: {
                 width: barcodeWidth,
@@ -1019,22 +975,19 @@ function detectSignature(canvas, barcodeCoordinates) {
             }
         });
 
-        // More lenient detection - consider focus area more important
         return {
-            detected: focusResult.detected || (rowResult.detected && rowResult.confidence > 15),
-            scans: {
-                fullRow: rowResult,
-                focusArea: focusResult
-            },
-            confidence: Math.max(rowResult.confidence, focusResult.confidence)
+            detected: result.detected,
+            confidence: result.confidence,
+            analysisData: result
         };
 
     } catch (error) {
         console.error("Signature detection error:", error);
         return { detected: false };
-    }
+    } 
 }
 
+// This function analyzes the signature area and returns detection results
 function analyzeSignatureArea(imageData, width, height, options) {
     const opts = options || {
         pixelThreshold: 120,
@@ -1109,6 +1062,7 @@ function analyzeSignatureArea(imageData, width, height, options) {
 }
 // =========================================================================================================================================
 
+// Function to create a canvas from a file
 function updateProgress(percent, text) {
     // Smooth progress bar animation
     progressBar.style.transition = 'width 0.3s ease';

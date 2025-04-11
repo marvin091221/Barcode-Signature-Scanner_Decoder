@@ -42,7 +42,7 @@ function addResultToTable(filename, result) {
                 '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Success</span>'}
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            <button class="px-3 py-1 border-2 rounded-full border-blue-800 text-blue-800 bg-blue-200 hover:border-green-800 hover:bg-green-200 hover:text-blue-900 view-details" 
+            <button class="px-3 py-1 rounded-lg text-white bg-blue-500 hover:border-2 hover:border-blue-800 hover:bg-blue-700 view-details" 
                     data-filename="${filename}">
                 View Details
             </button>
@@ -85,7 +85,7 @@ function showBarcodeDetails(filename) {
                             <td class="px-4 py-2 whitespace-nowrap text-sm">
                                 ${barcode.hasSignature ? 
                                     '<span class="text-green-500 font-medium">Detected</span>' : 
-                                    '<span class="text-red-500 font-medium">Not Detected</span>'}
+                                    '<span class="text-red-500 font-medium">None</span>'}
                             </td>
                             <td class="px-4 py-2 whitespace-nowrap text-sm">
                                 <div class="w-full bg-gray-200 rounded-full h-2.5">
