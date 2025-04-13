@@ -1,15 +1,37 @@
+<!--
+/**
+ * @file index.php
+ * @description Main entry point for the Barcode & Signature Scanner web application.
+ *             This application allows users to scan barcode's (primarily Code 39)
+ *             and detect signatures from both images and PDF files.
+ * 
+ * Key Features:
+ * - Supports PDF and image file uploads
+ * - Code 39 barcode scanning
+ * - Signature detection adjacent to barcode's
+ * - Real-time progress feedback
+ * - Results export functionality
+ * 
+ * Dependencies:
+ * - Dynamsoft Barcode Reader v9.6.2
+ * - PDF.js v2.12.313
+ * - PDF-lib v1.17.1
+ * - Tailwind CSS v2.1.2
+ */
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Basic meta tags for proper rendering and mobile responsiveness -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4B5563">
+    <!-- Base64 encoded favicon for instant loading -->
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAABH0lEQVQ4jZ2TsUrDUBSGv5ObtCRpU6RQHFzcFAen4KBv4BOIm6Cg4CC+Qwfp4FOITyCCFEHo4Cq4ONSpFBrSm6RJk3sdhJKkaSD9t3M593z/OfdegULbtm2EKAC4rnsQhuE9gNBoNB4Mw7iSJKkmjuMkz/PexuPxc6PRaAHEO0YVQbIsKwKefd9/TNN0CKDrug0QWpZ1WqlUzvMjCoAfhuHQtu0XwzBUz/M+kyR5AnpFRFEEURRVYFiv1y/TNH3N5/MBMC0hJEli13XfgQfLsrr1ev1mF7EDsG37DugA98PhcAR8/QUQRVEpl8tn2Wx2K0nSMTM7/RJCKGaz2RQYAAPf9z+2VVqrQRAEvud5n7va/0f9N4AkSXIcxz+/AXZNu58fwVSzAAAAAElFTkSuQmCC">
     <title>Barcode & Signature Scanner</title>
+    <meta name="description" content="A web application for scanning and decoding barcode's and signatures from documents.">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.1.2/dist/tailwind.min.css" rel="stylesheet">
-
-    <!-- Signature Scanner -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.0.7/dist/blazeface.min.js"></script>
-
+    
     <!-- PDF reader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
@@ -74,22 +96,27 @@
         <button id="scanBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg w-full transition-colors">
             Scan Documents
         </button>
-
-        <!-- Progress Indicator -->
-        <div id="progressContainer" class="hidden mb-5">
-            <div class="spinner mb-4"></div>
-            <div class="flex justify-between mb-1 px-2">
-                <span id="progressText" class="font-medium">Processing...</span>
-                <span id="progressPercent" class="font-medium">0%</span>
-            </div>
-            <div class="w-full bg-gray-100 rounded-full h-3.5">
-                <div id="progressBar" class="bg-green-600 h-3.5 rounded-full" style="width: 0%"></div>
+        
+        <!-- Progress Modal -->
+        <div id="progressModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+                <div class="flex justify-center mb-4">
+                    <div class="spinner"></div>
+                </div>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Scanning Progress</h3>
+                    <span id="progressPercent" class="font-medium">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+                    <div id="progressBar" class="bg-green-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+                <p id="progressText" class="text-sm text-gray-600 text-center">Preparing to scan...</p>
             </div>
         </div>
 
         <!-- Results Section -->
         <div id="resultsSection" class="hidden">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex justify-between items-center my-4">
                 <h2 class="text-2xl font-semibold">Scan Results</h2>
                 <div class="flex space-x-2">
                     <button id="exportBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
@@ -101,7 +128,7 @@
                 </div>
             </div>
             
-            <div class="overflow-x-auto mb-4">
+            <div class="overflow-x-auto mb-4 rounded-xl">
                 <table class="min-w-full bg-white border border-gray-200">
                     <thead class="bg-blue-300">
                         <tr>
@@ -118,7 +145,7 @@
                 </table>
             </div>
             
-            <div id="barcodeDetails" class="hidden bg-gray-50 p-4 border-2 rounded-lg">
+            <div id="barcodeDetails" class="hidden bg-gray-50 p-4 border-2 rounded-xl">
                 <h3 class="font-medium mb-2">Barcode Details</h3>
                 <div id="barcodeDetailsContent" class="grid grid-cols-1 gap-4"></div>
             </div>

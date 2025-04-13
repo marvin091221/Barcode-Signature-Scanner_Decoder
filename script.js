@@ -1,4 +1,21 @@
-// DOM Elements
+/**
+ * @file script.js
+ * @description Core functionality for the Barcode & Signature Scanner application.
+ *             Handles file processing, barcode detection, signature analysis,
+ *             and UI interactions.
+ *
+ * Features:
+ * - File upload handling (drag & drop and click-to-upload)
+ * - PDF and image processing
+ * - Barcode detection using Dynamsoft Barcode Reader
+ * - Signature detection using pixel analysis
+ * - Real-time progress updates
+ * - Results management and export
+ */
+
+// DOM Elements - UI Components
+const progressModal = document.getElementById('progressModal');
+
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const fileList = document.getElementById('fileList');
@@ -14,21 +31,25 @@ const exportBtn = document.getElementById('exportBtn');
 const clearResultsBtn = document.getElementById('clearResultsBtn');
 const barcodeDetails = document.getElementById('barcodeDetails');
 const barcodeDetailsContent = document.getElementById('barcodeDetailsContent');
-const processingCanvas = document.getElementById('processingCanvas');
-const processingCtx = processingCanvas.getContext('2d');
-const result = document.getElementById('result');
-
 const loadingIndicator = document.getElementById('loadingIndicator');
 const loadingProgress = document.getElementById('loadingProgress');
 
-// State
+// Application State Variables
+/** @type {File[]} Array of files queued for processing */
 let filesToProcess = [];
+/** @type {Object[]} Array of all detected barcode's with their metadata */
 let allBarcodeResults = [];
-let signatureModel;
-let isModelLoaded = false;
+/** @type {Dynamsoft.DBR.BarcodeReader} Instance of Dynamsoft barcode reader */
 let reader = null;
-let cvReady = false;
 
+/**
+ * Initializes the Dynamsoft Barcode Reader with optimal settings for Code 39 detection.
+ * 
+ * @async
+ * @function initializeDynamsoft
+ * @throws {Error} If initialization fails or license is invalid
+ * @returns {Promise<void>}
+ */
 async function initializeDynamsoft() {
     try {
         // Initialize the barcode reader
@@ -36,16 +57,16 @@ async function initializeDynamsoft() {
         
         // CORRECTED: Use the proper method to update settings
         let settings = await reader.getRuntimeSettings();
-        
-        // // Remove regional scanning restriction
-        // delete settings.region; 
 
-        // Configure settings for Code 39 priority
-        // settings.barcodeFormatIds = Dynamsoft.DBR.EnumBarcodeFormat.BF_CODE_39;
-        // settings.deblurLevel = 6;
-        // settings.expectedBarcodesCount = 0;
-        settings.barcodeFormatIds = Dynamsoft.DBR.EnumBarcodeFormat.BF_CODE_39;
-        settings.minResultConfidence = 0; 
+        // Dynamsoft supports multiple formats
+        settings.barcodeFormatIds = Dynamsoft.DBR.EnumBarcodeFormat.BF_CODE_39; // Only Code 39 for now
+
+            // Dynamsoft.DBR.EnumBarcodeFormat.BF_QR_CODE |
+            // Dynamsoft.DBR.EnumBarcodeFormat.BF_CODE_128 |
+            // Dynamsoft.DBR.EnumBarcodeFormat.BF_UPC_A;
+
+        // Optimize for accuracy/speed
+        settings.deblurLevel = 3;          // Better for blurry barcodes
         
         // Apply the updated settings
         await reader.updateRuntimeSettings(settings);
@@ -110,7 +131,21 @@ async function initializeAll() {
  // Call this when the page loads
  window.addEventListener('DOMContentLoaded', initializeAll);
 
-// Functions
+/**
+ * Functions for File Processing
+ */
+
+/**
+ * Handles file uploads from drag-and-drop or file input.
+ * Validates files for type and size, then prepares them for processing.
+ * 
+ * Validation:
+ * - File types: PDF, PNG, JPG
+ * - Maximum size: 10MB per file
+ * 
+ * @param {FileList} files - List of files from input or drag event
+ * @returns {void}
+ */
 function handleFiles(files) {
     errorMessage.classList.add('hidden');
     filesToProcess = [];
@@ -156,6 +191,30 @@ function renderFileList() {
     `).join('');
 }
 
+/**
+ * Creates a canvas element from an image file.
+ * 
+ * @param {File} file - The image file to convert
+ * @returns {Promise<HTMLCanvasElement>} Canvas containing the image
+ */
+async function createCanvasFromFile(file) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            URL.revokeObjectURL(img.src); // Clean up memory
+            resolve(canvas);
+        };
+        img.onerror = (err) => reject(new Error('Failed to load image'));
+        img.src = URL.createObjectURL(file);
+    });
+}
+
+// Functions that identify the size of the files
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -170,16 +229,22 @@ function showError(message) {
     setTimeout(() => errorMessage.classList.add('hidden'), 5000);
 }
 
+// Function that processes library files and shows the progress bar
 async function processFiles() {
     try {
+        // Show modal when starting
+        progressModal.classList.remove('hidden');
+
         // Initialize Dynamsoft if not already done
         if (!reader) await initializeDynamsoft();
-        if (filesToProcess.length === 0) return;
+        if (filesToProcess.length === 0) {
+            progressModal.classList.add('hidden');
+            return;
+        }
 
         // Reset state
         allBarcodeResults = [];
         resultsBody.innerHTML = '';
-        progressContainer.classList.remove('hidden');
         scanBtn.disabled = true;
         resultsSection.classList.add('hidden');
 
@@ -229,7 +294,6 @@ async function processFiles() {
                     // Store all barcode results for export
                     allBarcodeResults.push(...result.barcodes.map(b => ({
                         ...b,
-                        ...b,
                         fileName: file.name,
                         hasSignature: b.hasSignature // Ensure hasSignature is included
                     })));
@@ -255,164 +319,37 @@ async function processFiles() {
         updateProgress(100, 'Processing complete!');
         scanBtn.disabled = false;
         resultsSection.classList.remove('hidden');
+        
+        // Hide modal when complete
+        setTimeout(() => progressModal.classList.add('hidden'), 1000);
 
     } catch (error) {
         console.error("Processing failed:", error);
         showError("Failed to initialize barcode scanner. Please refresh the page.");
         scanBtn.disabled = false;
-        progressContainer.classList.add('hidden');
+        progressModal.classList.add('hidden');
     }
 }
 
-// // Temporary function to show the canvas for debugging
-// function debugShowPage(canvas) {
-//     try {
-//         // Create a preview div if it doesn't exist
-//         let debugDiv = document.getElementById('debugPreview');
-//         if (!debugDiv) {
-//             debugDiv = document.createElement('div');
-//             debugDiv.id = 'debugPreview';
-//             debugDiv.style.position = 'fixed';
-//             debugDiv.style.bottom = '20px';
-//             debugDiv.style.right = '20px';
-//             debugDiv.style.zIndex = '1000';
-//             debugDiv.style.backgroundColor = 'white';
-//             debugDiv.style.padding = '10px';
-//             debugDiv.style.border = '1px solid #ccc';
-//             debugDiv.style.maxHeight = '300px';
-//             debugDiv.style.overflow = 'auto';
-//             document.body.appendChild(debugDiv);
-//         }
-        
-//         // Add the canvas image to the div
-//         const img = document.createElement('img');
-//         img.src = canvas.toDataURL();
-//         img.style.maxWidth = '200px';
-//         debugDiv.appendChild(img);
-//     } catch (error) {
-//         console.error('Debug preview error:', error);
-//     }
-// }
-
-// Function to process PDF files with Dynamsoft
-async function processPDFWithDynamsoft(file) {
-    const result = {
-        barcodes: [],
-        signature: false,
-        error: null,
-        fileType: file.type,
-        fileName: file.name
-    };
-
-    try {
-        // Load the PDF.js library
-        const pdfjsLib = window.pdfjsLib;
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.worker.min.js';
-        
-        // Create a FileReader to read the file content
-        const fileReader = new FileReader();
-        
-        // Read the PDF file as an ArrayBuffer
-        const pdfData = await new Promise((resolve, reject) => {
-            fileReader.onload = () => resolve(fileReader.result);
-            fileReader.onerror = reject;
-            fileReader.readAsArrayBuffer(file);
-        });
-        
-        // Load the PDF document
-        const pdfDoc = await pdfjsLib.getDocument({data: pdfData}).promise;
-        const numPages = pdfDoc.numPages;
-
-        // Process each page of the PDF
-        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-            updateProgress(((pageNum - 1) / numPages) * 100, `Processing page ${pageNum} of ${numPages} in ${file.name}`);
-                        
-            // Get the page
-            const page = await pdfDoc.getPage(pageNum);
-            
-            // Create a canvas for rendering the PDF page
-            const viewport = page.getViewport({scale: 3.0});
-            const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-            // Render the PDF page on the canvas
-            await page.render({
-                canvasContext: ctx,
-                viewport: viewport
-            }).promise;
-
-            if (!reader) await initializeDynamsoft();
-            
-            // Convert canvas to blob URL for Dynamsoft to process
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.99);
-            const barcodeResults = await reader.decode(dataUrl);
-            
-            // Process each barcode found on this page
-            for (const barcode of barcodeResults) {
-                const points = barcode.localizationResult?.resultPoints || [];
-                
-                // Calculate center point for sorting
-                const centerX = points.length > 0 ? points.reduce((sum, p) => sum + p[0], 0) / points.length : 0;
-                const centerY = points.length > 0 ? points.reduce((sum, p) => sum + p[1], 0) / points.length : 0;
-                
-                // Detect signature for this specific barcode
-                const hasSignature = await detectSignature(canvas, points);
-                
-                result.barcodes.push({
-                    code: barcode.barcodeText,
-                    format: barcode.barcodeFormatString,
-                    confidence: barcode.localizationResult?.confidence || 0,
-                    coordinates: points,
-                    centerX,
-                    centerY,
-                    hasSignature,
-                    visualization: createDynamsoftBarcodeVisualization(canvas, {
-                        coordinates: points,
-                        format: barcode.barcodeFormatString,
-                        code: barcode.barcodeText,
-                        confidence: barcode.localizationResult?.confidence || 0,
-                        hasSignature
-                    }),
-                    page: pageNum,
-                    hasSignature
-                });
-                
-                // Set document-level signature flag if any barcode has a signature
-                if (hasSignature) {
-                    result.signature = true;
-                }
-            }
-        }
-        
-        // Sort barcodes by page, then by position (top to bottom, then left to right)
-        result.barcodes.sort((a, b) => {
-            // First sort by page number
-            if (a.page !== b.page) {
-                return a.page - b.page;
-            }
-            
-            // Define a threshold for considering barcodes to be on the same "row"
-            const rowThreshold = 30; // pixels
-            
-            // If barcodes are roughly on the same horizontal line, sort by X
-            if (Math.abs(a.centerY - b.centerY) < rowThreshold) {
-                return a.centerX - b.centerX; // Left to right
-            }
-            
-            // Otherwise sort by Y coordinate
-            return a.centerY - b.centerY; // Top to bottom
-        });
-        
-    } catch (error) {
-        result.error = error.message;
-        console.error("Error processing PDF:", error);
-    }
-    
-    return result;
-}
-
+/**
+ * Processes a PDF file for barcode detection and signature analysis.
+ * Handles multi-page PDFs by rendering each page to a canvas and analyzing it.
+ * 
+ * Process Flow:
+ * 1. Loads PDF using PDF.js library
+ * 2. Renders each page at high resolution (scale: 3.0)
+ * 3. Detects barcodes using Dynamsoft SDK
+ * 4. Analyzes areas near barcodes for signatures
+ * 5. Sorts results by page number and position
+ * 
+ * @param {File} file - The PDF file to process
+ * @returns {Promise<Object>} Processing results containing:
+ *   - barcodes: Array of detected barcodes with metadata
+ *   - signature: Boolean indicating if any signatures were found
+ *   - error: Error message if processing failed
+ *   - fileType: Always 'application/pdf'
+ *   - fileName: Original file name
+ */
 // Function to process PDF files with row detection
 async function processPDFWithRegionDetection(file) {
     const result = {
@@ -463,15 +400,12 @@ async function processPDFWithRegionDetection(file) {
                         [barcode.localizationResult.x1, barcode.localizationResult.y2]
                     ];
                 }
-                console.log(`[Debug] Barcode points:`, points);
 
                 const centerX = points.reduce((sum, p) => sum + p[0], 0) / points.length;
                 const centerY = points.reduce((sum, p) => sum + p[1], 0) / points.length;
 
                 const sigResult = await detectSignature(canvas, points);
                 const hasSignature = sigResult.detected;
-
-                console.log(`[Barcode] Text: ${barcode.barcodeText}, Page: ${pageNum}, Signature Detected: ${hasSignature}`);
 
                 result.barcodes.push({
                     code: barcode.barcodeText,
@@ -481,84 +415,21 @@ async function processPDFWithRegionDetection(file) {
                     centerX,
                     centerY,
                     hasSignature,
+                    signatureConfidence: sigResult.confidence,
                     page: pageNum,
                 });
 
                 if (hasSignature) result.signature = true;
             }
         }
-
+        
+        // Sort barcodes by page, then by position (top to bottom, then left to right)
         result.barcodes.sort((a, b) => {
-            if (a.page !== b.page) return a.page - b.page;
-            const rowThreshold = 30;
-            if (Math.abs(a.centerY - b.centerY) < rowThreshold) return a.centerX - b.centerX;
-            return a.centerY - b.centerY;
-        });
-    } catch (error) {
-        console.error("Row-based scanning failed:", error);
-        result.error = error.message;
-    }
-
-    return result;
-}
-
-// Function to process Image files with Dynamsoft 
-async function processImageWithDynamsoft(file) {
-    const result = {
-        barcodes: [], // This will maintain the original order
-        signature: false,
-        error: null,
-        fileType: file.type,
-        fileName: file.name
-    };
-
-    try {
-        const imageUrl = URL.createObjectURL(file);
-        if (!reader) await initializeDynamsoft();
-        
-        // Get barcodes in detection order (no sorting applied)
-        const barcodeResults = await reader.decode(imageUrl);
-
-        // Create canvas from file first - important fix here
-        const canvas = await createCanvasFromFile(file);
-        
-        // Process each barcode and detect signature near it
-        for (const barcode of barcodeResults) {
-            const points = barcode.localizationResult?.resultPoints || [];
-            const centerX = points.length > 0 ? points.reduce((sum, p) => sum + p[0], 0) / points.length : 0;
-            const centerY = points.length > 0 ? points.reduce((sum, p) => sum + p[1], 0) / points.length : 0;
+            // First sort by page number
+            if (a.page !== b.page) {
+                return a.page - b.page;
+            }
             
-            // Detect signature for this specific barcode
-            const { detected } = await detectSignature(canvas, points); // Destructure the result
-            const hasSignature = detected;
-            
-            result.barcodes.push({
-                code: barcode.barcodeText,
-                format: barcode.barcodeFormatString,
-                confidence: barcode.localizationResult?.confidence || 0,
-                coordinates: points,
-                centerX,
-                centerY,
-                hasSignature, // Now properly set from detection result
-                visualization: createDynamsoftBarcodeVisualization(canvas, {
-                    coordinates: points,
-                    format: barcode.barcodeFormatString,
-                    code: barcode.barcodeText,
-                    confidence: barcode.localizationResult?.confidence || 0,
-                    hasSignature
-                }),
-            });
-            
-            // // Set document-level signature flag if any barcode has a signature
-            // if (hasSignature) {
-            //     result.signature = true;
-            // }
-        }
-        
-        URL.revokeObjectURL(imageUrl);
-
-        // Sort barcodes by position (top to bottom, then left to right)
-        result.barcodes.sort((a, b) => {
             // Define a threshold for considering barcodes to be on the same "row"
             const rowThreshold = 30; // pixels
             
@@ -571,298 +442,187 @@ async function processImageWithDynamsoft(file) {
             return a.centerY - b.centerY; // Top to bottom
         });
         
-        // Rest of the processing remains unchanged
-        for (const barcode of result.barcodes) {
-            barcode.visualization = createDynamsoftBarcodeVisualization(canvas, barcode);
+    } catch (error) {
+        console.error("Row-based scanning failed:", error);
+        result.error = error.message;
+    }
+
+    return result;
+}
+
+// Function to process Image files with Dynamsoft 
+async function processImageWithDynamsoft(file) {
+    const result = {
+        barcodes: [],
+        signature: false,
+        error: null,
+        fileType: file.type,
+        fileName: file.name
+    };
+
+    try {
+        // 1. Load image with size validation
+        const img = await new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                // Validate file size (10MB limit)
+                if (file.size > 10 * 1024 * 1024) {
+                    reject(new Error('File size exceeds 10MB limit'));
+                    URL.revokeObjectURL(img.src); // Cleanup
+                    return;
+                }
+                resolve(img);
+            };
+            img.onerror = (e) => reject(new Error(`Image load failed: ${e.message}`));
+            img.src = URL.createObjectURL(file);
+        });
+
+        // 2. Create canvas with native resolution (no scaling)
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(img.src);
+
+        // 3. Configure optimized decoding settings
+        if (!reader) await initializeDynamsoft();
+        const barcodeResults = await reader.decode(canvas, {
+            // Reduced memory footprint settings
+            deblurLevel: 3,          // Balance between accuracy and memory
+            scaleDownThreshold: 800, // Auto-scale large images
+            maxParallelTasks: 1,     // Reduce memory spikes
+            region: {                // Focus on central area
+                regionLeft: 10,
+                regionTop: 10,
+                regionRight: 90,
+                regionBottom: 90,
+                regionMeasuredByPercentage: 1
+            }
+        });
+
+        // 4. Unified processing pipeline with PDF-style accuracy
+        for (const barcode of barcodeResults) {
+            let points = barcode.localizationResult?.resultPoints || [];
+            
+            // Coordinate fallback identical to PDF processing
+            if (points.length < 4 && barcode.localizationResult?.x1 !== undefined) {
+                points = [
+                    [barcode.localizationResult.x1, barcode.localizationResult.y1],
+                    [barcode.localizationResult.x2, barcode.localizationResult.y1],
+                    [barcode.localizationResult.x2, barcode.localizationResult.y2],
+                    [barcode.localizationResult.x1, barcode.localizationResult.y2]
+                ];
+            }
+
+            const centerX = points.reduce((sum, p) => sum + p[0], 0) / points.length;
+            const centerY = points.reduce((sum, p) => sum + p[1], 0) / points.length;
+
+            // PDF-style signature detection
+            const sigResult = await detectSignature(canvas, points);
+            const hasSignature = sigResult.detected;
+
+            result.barcodes.push({
+                code: barcode.barcodeText,
+                format: barcode.barcodeFormatString,
+                confidence: barcode.localizationResult?.confidence || 0,
+                coordinates: points,
+                centerX,
+                centerY,
+                hasSignature,
+                signatureConfidence: sigResult.confidence
+            });
         }
-        result.signature = await detectSignature(canvas);
-        
+
+        // 5. Memory cleanup
+        canvas.width = 0;
+        canvas.height = 0;
+
+        // Sort barcodes by page, then by position (top to bottom, then left to right)
+        result.barcodes.sort((a, b) => {
+            // First sort by page number
+            if (a.page !== b.page) {
+                return a.page - b.page;
+            }
+            
+            // Define a threshold for considering barcodes to be on the same "row"
+            const rowThreshold = 30; // pixels
+            
+            // If barcodes are roughly on the same horizontal line, sort by X
+            if (Math.abs(a.centerY - b.centerY) < rowThreshold) {
+                return a.centerX - b.centerX; // Left to right
+            }
+            
+            // Otherwise sort by Y coordinate
+            return a.centerY - b.centerY; // Top to bottom
+        });
+
+        // result.signature = result.barcodes.some(b => b.hasSignature);
+
     } catch (error) {
         result.error = error.message;
         console.error("Error processing image:", error);
     }
     
-    return result; // Returns barcodes in original detection order
+    return result;
 }
 
-// Function to create a canvas from a file
-async function processCanvas(canvas, result, sourceInfo) {
-    // Scan for barcodes
-    const barcodeResults = await scanBarcodesOnCanvas(canvas);
-    if (barcodeResults.length > 0) {
-        result.barcodes.push(...barcodeResults.map(b => ({
-            ...b,
-            source: sourceInfo
-        })));
-        allBarcodeResults.push(...barcodeResults.map(b => ({
-            ...b,
-            fileName: result.fileName,
-            source: sourceInfo
-        })));
-    }
+/**
+ * Creates a visual representation of barcode detection results.
+ * 
+ * @param {HTMLCanvasElement} sourceCanvas - Original image canvas
+ * @param {Object} barcode - Barcode detection result
+ * @returns {string} Data URL of the visualization image
+ */
+function createDynamsoftBarcodeVisualization(sourceCanvas, barcode) {
+    const canvas = document.createElement('canvas');
+    canvas.width = sourceCanvas.width;
+    canvas.height = sourceCanvas.height;
+    const ctx = canvas.getContext('2d');
     
-    // Detect signature
-    if (!result.signature) {
-        result.signature = await detectSignature(canvas);
-    }
+    // Draw original image
+    ctx.drawImage(sourceCanvas, 0, 0);
+    
+    // Draw detection box
+    ctx.strokeStyle = barcode.hasSignature ? '#00ff88' : '#ff0000';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    barcode.coordinates.forEach((point, index) => {
+        if (index === 0) ctx.moveTo(point[0], point[1]);
+        else ctx.lineTo(point[0], point[1]);
+    });
+    ctx.closePath();
+    ctx.stroke();
+    
+    // Add text annotation
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '14px Arial';
+    ctx.fillText(
+        `${barcode.format}: ${barcode.code} (${Math.round(barcode.confidence)}%)`,
+        barcode.coordinates[0][0] + 10,
+        barcode.coordinates[0][1] - 10
+    );
+    
+    return canvas.toDataURL();
 }
 
-// // Function to scan barcodes on a canvas
-// function detectSignature(canvas, barcodeCoordinates) {
-//     // if (!barcodeCoordinates || barcodeCoordinates.length < 4) {
-//     //     console.warn("⚠️ Barcode coordinates missing or invalid");
-//     //     return { detected: false };
-//     // }
-
-//     const minY = Math.min(...barcodeCoordinates.map(p => p[1]));
-//     const maxY = Math.max(...barcodeCoordinates.map(p => p[1]));
-//     const barcodeHeight = maxY - minY;
-
-//     const verticalMargin = 30;
-//     const rowY = Math.max(0, minY - verticalMargin);
-//     const rowHeight = Math.min(canvas.height - rowY, barcodeHeight + verticalMargin * 4);
-
-//     const regionCanvas = document.createElement('canvas');
-//     regionCanvas.width = canvas.width;
-//     regionCanvas.height = rowHeight;
-//     const ctx = regionCanvas.getContext('2d');
-//     ctx.drawImage(canvas, 0, rowY, canvas.width, rowHeight, 0, 0, canvas.width, rowHeight);
-
-//     const imageData = ctx.getImageData(0, 0, canvas.width, rowHeight);
-
-//     // Append preview for debugging
-//     regionCanvas.style.border = "2px solid red";
-//     regionCanvas.style.width = "100%";
-//     regionCanvas.style.marginBottom = "5px";
-//     document.body.appendChild(regionCanvas);
-
-//     const result = analyzeSignatureArea(imageData.data, canvas.width, rowHeight);
-//     console.log("Signature area result →", result);
-//     return result;
-// }
-
-// function analyzeSignatureArea(imageData, width, height) {
-//     console.log("✅ Entered analyzeSignatureArea()");
-
-//     // Tightened thresholds for signature-specific characteristics
-//     const SIGNATURE_PIXEL_DENSITY_THRESHOLD = 0.03;
-//     const SIGNATURE_STROKE_DENSITY_THRESHOLD = 0.025;
-//     const MIN_SIGNATURE_AREA = 1500;
-
-//     let signaturePixels = 0;
-//     let totalPixels = 0;
-//     let strokeTransitions = 0;
-//     let potentialSignatureArea = 0;
-
-//     for (let y = 0; y < height; y++) {
-//         let prevDark = false;
-//         let rowTransitionCount = 0;
-//         let rowSignaturePixels = 0;
-
-//         for (let x = 0; x < width; x++) {
-//             const idx = (y * width + x) * 4;
-//             const brightness = (imageData[idx] + imageData[idx+1] + imageData[idx+2]) / 3;
-
-//             totalPixels++;
-
-//             if (brightness < 100) {
-//                 signaturePixels++;
-//                 rowSignaturePixels++;
-                
-//                 if (!prevDark) {
-//                     strokeTransitions++;
-//                     rowTransitionCount++;
-//                 }
-//                 prevDark = true;
-//             } else {
-//                 prevDark = false;
-//             }
-//         }
-
-//         if (rowTransitionCount > width * 0.9) {
-//             strokeTransitions -= rowTransitionCount;
-//             rowTransitionCount = 0;
-//             continue;
-//         }
-
-//         if (rowSignaturePixels > width * 0.1 && 
-//             rowTransitionCount > width * 0.05) {
-//             potentialSignatureArea += width;
-//         }
-//     }
-
-//     const pixelDensity = signaturePixels / totalPixels;
-//     const strokeDensity = strokeTransitions / totalPixels;
-
-//     // Calculate isSignature BEFORE using it
-//     const isSignature = 
-//         pixelDensity > SIGNATURE_PIXEL_DENSITY_THRESHOLD &&
-//         strokeDensity > SIGNATURE_STROKE_DENSITY_THRESHOLD &&
-//         potentialSignatureArea > MIN_SIGNATURE_AREA;
-
-//     console.log("Signature check →", {
-//         pixelDensity,
-//         strokeDensity, 
-//         potentialSignatureArea,
-//         meetsThresholds: isSignature
-//     });
-
-//     return {
-//         detected: isSignature,
-//         pixelDensity,
-//         strokeDensity,
-//         signatureArea: potentialSignatureArea
-//     };
-// }
-
-// // Sort barcodes top-to-bottom by Y coordinate
-// function sortBarcodesByPageAndVerticalPosition(barcodes) {
-//     return barcodes.sort((a, b) => {
-//         if (a.page !== b.page) return a.page - b.page;
-//         return a.centerY - b.centerY;
-//     });
-// }
-
-// function detectSignature(canvas, barcodeCoordinates) {
-//     if (!barcodeCoordinates || barcodeCoordinates.length < 4) {
-//         console.warn("⚠️ Barcode coordinates missing or invalid");
-//         return { detected: false };
-//     }
-
-//     // Calculate barcode boundaries
-//     const minX = Math.min(...barcodeCoordinates.map(p => p[0]));
-//     const maxX = Math.max(...barcodeCoordinates.map(p => p[0]));
-//     const minY = Math.min(...barcodeCoordinates.map(p => p[1]));
-//     const maxY = Math.max(...barcodeCoordinates.map(p => p[1]));
-//     const barcodeHeight = maxY - minY;
-//     const barcodeWidth = maxX - minX;
-
-//     // Configuration for signature scanning
-//     const scanOptions = {
-//         pixelThreshold: 120,       // Higher threshold for darker signatures
-//         minDensity: 0.03,         // Lower density threshold
-//         minStrokeDensity: 0.01,    // Lower stroke density threshold
-//         minSignatureWidth: 30,     // Smaller width for signature strokes
-//         minBlocks: 2               // Require at least 2 potential signature blocks
-//     };
-
-//     // 1. Full Row Scan with expanded area
-//     const rowPadding = Math.max(10, barcodeHeight * 0.5); // Increased padding
-//     const rowStartY = Math.max(0, minY - rowPadding);
-//     // const rowEndY = Math.min(canvas.height, maxY + rowPadding);
-//     // const rowHeight = Math.max(30, rowEndY - rowStartY); // Minimum 20px height
-
-//     const verticalMargin = 30;
-//     const rowY = Math.max(0, minY - verticalMargin);
-//     const rowHeight = Math.min(canvas.height - rowY, barcodeHeight + verticalMargin * 3.1);
-
-//     // 2. Expanded Right-to-Center Scan
-//     const rightSideStartX = Math.max(0, maxX - (barcodeWidth * 0.1)); // Start left of barcode edge
-//     const rightSideWidth = Math.min(
-//         canvas.width * 1, // Scan up to 100% of page width
-//         canvas.width - rightSideStartX
-//     );
-//     const signatureFocusWidth = Math.max(
-//         scanOptions.minSignatureWidth * 2, // Wider minimum area
-//         Math.min(barcodeWidth * 4, rightSideWidth) 
-//     );
-
-//     // Validate dimensions
-//     if (signatureFocusWidth <= 0 || rowHeight <= 0) {
-//         console.warn("Invalid scan area dimensions", {
-//             width: signatureFocusWidth,
-//             height: rowHeight
-//         });
-//         return { detected: false };
-//     }
-
-//     // Create and draw canvases
-//     const rowCanvas = document.createElement('canvas');
-//     rowCanvas.width = Math.max(1, canvas.width);
-//     rowCanvas.height = Math.max(1, rowHeight);
-//     const rowCtx = rowCanvas.getContext('2d');
-    
-//     const focusCanvas = document.createElement('canvas');
-//     focusCanvas.width = Math.max(1, signatureFocusWidth);
-//     focusCanvas.height = Math.max(1, rowHeight);
-//     const focusCtx = focusCanvas.getContext('2d');
-
-//     try {
-//         // Draw scan areas
-//         rowCtx.drawImage(
-//             canvas,
-//             0, rowStartY, canvas.width, rowHeight,
-//             0, 0, canvas.width, rowHeight
-//         );
-        
-//         focusCtx.drawImage(
-//             canvas,
-//             rightSideStartX, rowStartY, signatureFocusWidth, rowHeight,
-//             0, 0, signatureFocusWidth, rowHeight
-//         );
-
-//         // Debug visualization 
-//         // Cover the whole row
-//         rowCanvas.style.border = "2px solid blue";
-//         rowCanvas.style.width = "100%";
-//         rowCanvas.style.marginBottom = "5px";
-//         document.body.appendChild(rowCanvas);
-
-//         // Focus area for signature detection in the right side
-//         focusCanvas.style.border = "2px solid red";
-//         focusCanvas.style.width = "100%";
-//         focusCanvas.style.marginBottom = "20px";
-//         document.body.appendChild(focusCanvas);
-
-//         // Analyze both areas with enhanced options
-//         const rowResult = analyzeSignatureArea(
-//             rowCtx.getImageData(0, 0, canvas.width, rowHeight),
-//             canvas.width,
-//             rowHeight,
-//             scanOptions
-//         );
-        
-//         const focusResult = analyzeSignatureArea(
-//             focusCtx.getImageData(0, 0, signatureFocusWidth, rowHeight),
-//             signatureFocusWidth,
-//             rowHeight,
-//             scanOptions
-//         );
-
-//         console.log("Enhanced Signature Analysis", {
-//             fullRow: rowResult,
-//             focusArea: focusResult,
-//             scanAreas: {
-//                 fullRow: { width: canvas.width, height: rowHeight },
-//                 focusArea: { 
-//                     x: rightSideStartX, 
-//                     width: signatureFocusWidth, 
-//                     height: rowHeight 
-//                 }
-//             },
-//             barcodeDimensions: {
-//                 width: barcodeWidth,
-//                 height: barcodeHeight
-//             }
-//         });
-
-//         // More lenient detection - consider focus area more important
-//         return {
-//             detected: focusResult.detected || (rowResult.detected && rowResult.confidence > 15),
-//             scans: {
-//                 fullRow: rowResult,
-//                 focusArea: focusResult
-//             },
-//             confidence: Math.max(rowResult.confidence, focusResult.confidence)
-//         };
-
-//     } catch (error) {
-//         console.error("Signature detection error:", error);
-//         return { detected: false };
-//     }
-// }
-
-// Function to detect signature in a specific area of the canvas ========================== WORKING =============================
+/**
+ * Analyzes the area to the right of a barcode for potential signatures.
+ * Uses pixel analysis and pattern recognition to detect handwritten signatures.
+ * 
+ * Algorithm:
+ * 1. Calculates signature search area based on barcode dimensions
+ * 2. Extracts the region of interest from the canvas
+ * 3. Analyzes pixel density and stroke patterns
+ * 4. Determines signature presence using configurable thresholds
+ * 
+ * @param {HTMLCanvasElement} canvas - The canvas containing the full image
+ * @param {Array<Array<number>>} barcodeCoordinates - Array of [x,y] coordinates defining barcode corners
+ * @returns {Object} Detection result containing:
+ *   - detected: boolean - Whether a signature was detected
+ *   - confidence: number - Confidence score (0-100)
+ *   - analysisData: Object - Detailed analysis metrics
+ */
 function detectSignature(canvas, barcodeCoordinates) {
     if (!barcodeCoordinates || barcodeCoordinates.length < 4) {
         console.warn("⚠️ Barcode coordinates missing or invalid");
@@ -920,7 +680,7 @@ function detectSignature(canvas, barcodeCoordinates) {
 
     // Final validation of dimensions
     if (signatureAreaWidth <= 0 || signatureAreaHeight <= 0) {
-        console.warn("Invalid signature area dimensions", {
+        console.warn("⚠️ Invalid signature area dimensions", {
             width: signatureAreaWidth,
             height: signatureAreaHeight
         });
@@ -947,9 +707,10 @@ function detectSignature(canvas, barcodeCoordinates) {
             Math.floor(signatureAreaHeight)
         );
 
-        // // For debugging - show the analyzed area
+        // // For debugging - show the analyzed area ==========================================================
         // signatureCanvas.style.border = "2px solid green";
         // signatureCanvas.style.width = "100%";
+        // signatureCanvas.style.height = "10%";
         // signatureCanvas.style.marginBottom = "20px";
         // document.body.appendChild(signatureCanvas);
 
@@ -961,7 +722,7 @@ function detectSignature(canvas, barcodeCoordinates) {
             scanOptions
         );
 
-        console.log("Signature Analysis Result", {
+        console.log("✅ Signature Analysis Result", {
             result,
             scanArea: {
                 x: signatureAreaX,
@@ -972,7 +733,9 @@ function detectSignature(canvas, barcodeCoordinates) {
             barcodeDimensions: {
                 width: barcodeWidth,
                 height: barcodeHeight
-            }
+            },
+            signatureStatus: result.detected ? "Detected" : "None",
+            confidenceLevel: `${result.confidence.toFixed(1)}%`,
         });
 
         return {
@@ -987,7 +750,32 @@ function detectSignature(canvas, barcodeCoordinates) {
     } 
 }
 
-// This function analyzes the signature area and returns detection results
+/**
+ * Performs detailed analysis of a potential signature area using pixel-level metrics.
+ * 
+ * Analysis Methods:
+ * 1. Dark Pixel Density: Measures overall ink coverage
+ * 2. Stroke Transitions: Counts dark-to-light transitions for stroke analysis
+ * 3. Block Analysis: Identifies continuous dark regions that could be signature strokes
+ * 4. Pattern Recognition: Distinguishes between handwritten strokes and printed text
+ * 
+ * @param {ImageData} imageData - Raw pixel data of the signature area
+ * @param {number} width - Width of the analysis area in pixels
+ * @param {number} height - Height of the analysis area in pixels
+ * @param {Object} options - Analysis configuration parameters:
+ *   - pixelThreshold: number - Brightness threshold for dark pixel detection (0-255)
+ *   - minDensity: number - Minimum ratio of dark pixels to total pixels
+ *   - minStrokeDensity: number - Minimum density of stroke transitions
+ *   - minSignatureWidth: number - Minimum width of potential signature strokes
+ *   - minBlocks: number - Minimum number of distinct stroke blocks
+ * @returns {Object} Analysis results containing:
+ *   - detected: boolean - Whether a signature was detected
+ *   - pixelDensity: number - Ratio of dark pixels to total pixels
+ *   - strokeDensity: number - Density of stroke transitions
+ *   - potentialBlocks: number - Count of potential signature strokes
+ *   - maxBlockLength: number - Length of longest continuous stroke
+ *   - confidence: number - Overall confidence score (0-100)
+ */
 function analyzeSignatureArea(imageData, width, height, options) {
     const opts = options || {
         pixelThreshold: 120,
@@ -1060,9 +848,21 @@ function analyzeSignatureArea(imageData, width, height, options) {
         confidence
     };
 }
-// =========================================================================================================================================
 
 // Function to create a canvas from a file
+/**
+ * Updates the progress bar and status text in the UI.
+ * Provides visual feedback during file processing.
+ * 
+ * Features:
+ * - Smooth progress bar animation
+ * - Color change at completion (green -> blue)
+ * - Percentage and status text updates
+ * 
+ * @param {number} percent - Progress percentage (0-100)
+ * @param {string} text - Status message to display
+ * @returns {void}
+ */
 function updateProgress(percent, text) {
     // Smooth progress bar animation
     progressBar.style.transition = 'width 0.3s ease';
@@ -1082,13 +882,31 @@ function updateProgress(percent, text) {
     }
 }
 
+/**
+ * Exports scan results to a CSV file.
+ * Includes all detected barcodes and signatures from processed files.
+ * 
+ * CSV Format:
+ * - File Name: Original document name
+ * - File Type: PDF/Image type
+ * - Barcode Type: Format of detected barcode
+ * - Barcode Value: Decoded barcode content
+ * - Confidence: Barcode detection confidence
+ * - Signature Detected: Yes/No
+ * - Signature Confidence: Detection confidence
+ * - Status: Processing outcome
+ * - Time: Export timestamp
+ * 
+ * @returns {void} Downloads CSV file directly through browser
+ */
 function exportResults() {
     if (allBarcodeResults.length === 0 && resultsBody.children.length === 0) {
         showError('No results to export');
         return;
     }
     
-    let csvContent = "File Name,File Type,Barcode Type,Barcode Value,Signature Found,Status,Time\n";
+    // CSV headers
+    let csvContent = "File Name,File Type,Barcode Type,Barcode Value,Confidence,Signature Detected,Signature Confidence,Status,Time\n";
     
     // Get all rows from results table
     const rows = Array.from(resultsBody.querySelectorAll('tr'));
@@ -1098,9 +916,6 @@ function exportResults() {
         const cells = row.querySelectorAll('td');
         
         const fileType = cells[0].querySelector('div:nth-child(2)').textContent;
-        const barcodeCount = cells[1].textContent.includes('found') ? 
-            cells[1].querySelector('span').textContent.replace(' found', '') : '0';
-        const signature = cells[2].querySelector('span').textContent;
         const status = cells[3].querySelector('span').textContent;
         const time = new Date().toLocaleString();
         
@@ -1109,24 +924,59 @@ function exportResults() {
         
         if (fileBarcodes.length > 0) {
             fileBarcodes.forEach(barcode => {
-                csvContent += `"${filename}","${fileType}","${barcode.format || 'Unknown'}","${barcode.code}","${signature}","${status}","${time}"\n`;
+                csvContent += `"${filename}",` +                                        // File Name
+                              `"${fileType}",` +                                        // File Type
+                              `"${barcode.format || 'Unknown'}",` +                     // Barcode Type
+                              `"${barcode.code}",` +                                    // Barcode Value
+                              `"${barcode.confidence?.toFixed(1) || '0'}%",` +          // Confidence
+                              `"${barcode.hasSignature ? 'Detected' : 'None'}",` +      // Signature Detected
+                              `"${barcode.signatureConfidence?.toFixed(1) || '0'}%",` + // Signature Confidence
+                              `"${status}",` +                                          // Status
+                              `"${time}"\n`;                                            // Time
             });
         } else {
-            csvContent += `"${filename}","${fileType}","","","${signature}","${status}","${time}"\n`;
+            // For files with no barcodes but potentially signatures
+            const signatureCell = cells[2].querySelector('span');
+            const hasSignature = signatureCell.textContent.includes('detected');
+            
+            csvContent += `"${filename}",` +                            // File Name
+                          `"${fileType}",` +                            // File Type
+                          `"",` +                                       // Barcode Type (empty)
+                          `"",` +                                       // Barcode Value (empty)
+                          `"0%",` +                                     // Confidence (0%)
+                          `"${hasSignature ? 'Detected' : 'None'}",` +  // Signature Detected
+                          `"0%",` +                                     // Signature Confidence (0%)
+                          `"${status}",` +                              // Status
+                          `"${time}"\n`;                                // Time
         }
     });
     
+    // Create and download the CSV file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `barcode_scan_results_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `scan_results_${new Date().toISOString().slice(0, 10)}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 }
 
+/**
+ * Resets the application state and clears all results.
+ * 
+ * Actions:
+ * - Clears file processing queue
+ * - Clears stored barcode results
+ * - Resets file list display
+ * - Clears results table
+ * - Hides barcode details panel
+ * - Hides results section
+ * - Resets file input
+ * 
+ * @returns {void}
+ */
 function clearResults() {
     filesToProcess = [];
     allBarcodeResults = [];
