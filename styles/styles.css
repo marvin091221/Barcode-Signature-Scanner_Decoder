@@ -3,6 +3,59 @@ body.modal-open {
     padding-right: 15px; /* Prevent content shift when scrollbar disappears */
 }
 
+/* Loading Indicator Animations */
+#loadingIndicator {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+#loadingIndicator.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+#loadingIndicator .modal-content {
+    transform: scale(0.9);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+}
+
+#loadingIndicator.show .modal-content {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* For smoother loading transitions */
+#loadingIndicator .modal-content {
+    transition-delay: 0.1s;
+}
+
+#loadingIndicator p {
+    animation: fadeInUp 0.5s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Spinner animation */
+.spinner {
+    animation: spin 1s linear infinite, fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 /* Add a slight delay to the content animation */
 #noFilesModal.show .modal-content {
     transition-delay: 0.1s;

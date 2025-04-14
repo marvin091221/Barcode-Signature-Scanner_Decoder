@@ -23,6 +23,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#4B5563">
 
@@ -33,7 +34,7 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.1.2/dist/tailwind.min.css" rel="stylesheet">
 
     <!-- CSS styles -->
-    <link rel="stylesheet" href="./styles/styles.css">
+    <link rel="stylesheet" href="/styles/styles.css">
     
     <!-- PDF reader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js"></script>
@@ -44,10 +45,11 @@
     <!-- <script src="./library/pdf-lib.min.js"></script> -->
 
     <!-- Barcode Scanner and Decoder -->
-    <!-- Online Libraray for Dynamsoft -->
+    <!-- Online Library for Dynamsoft -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/dynamsoft-javascript-barcode@9.6.2/dist/dbr.js"></script> -->
 
-    <script src="./library/dynamsoft-javascript-barcode-library.js"></script>
+    <!-- Back-up if the online library is down -->
+    <script src="/library/dynamsoft-javascript-barcode-library.js"></script>
 
     <script>
         // Initialize license BEFORE any scanning operations
@@ -76,8 +78,8 @@
         </div>
     </div>
 
-    <div id="loadingIndicator" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white p-6 rounded-lg text-center">
+    <div id="loadingIndicator" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="modal-content bg-white p-6 rounded-lg text-center">
             <div class="spinner mx-auto"></div>
             <p class="mt-4 text-lg">Loading scanner components...</p>
             <p id="loadingProgress" class="text-sm text-gray-600">Initializing OpenCV</p>
@@ -205,7 +207,7 @@
         <canvas id="processingCanvas"></canvas>
     </div>
 
-    <script src="script.js"></script>
-    <script src="addResultToTable_showBarcodeDetails.js"></script>
+    <script src="/script.js"></script>
+    <script src="/addResultToTable_showBarcodeDetails.js"></script>
 </body>
 </html>
