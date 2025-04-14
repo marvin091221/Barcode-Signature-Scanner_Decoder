@@ -62,7 +62,7 @@ function addResultToTable(filename, result) {
                 '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Success</span>'}
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            <button class="px-3 py-1 rounded-lg text-white bg-blue-500 hover:border-2 hover:border-blue-800 hover:bg-blue-700 view-details" 
+            <button class="px-3 py-1 rounded-lg text-white bg-blue-500 hover:border-2 hover:border-blue-800 hover:bg-blue-700 view-details gap-2" 
                     data-filename="${filename}"
                     data-showing="false">
                 View Details
@@ -95,61 +95,91 @@ function showBarcodeDetails(event) {
                     No Code 39 barcodes found in this file.
                 </p>
             `;
-            // barcodeDetails.classList.remove('hidden');
-            // return;
         } else {
-            barcodeDetailsContent.innerHTML = `
-                <div class="overflow-x-auto">
-                    <table class="min-w-full bg-white border border-gray-200">
-                        <thead class="bg-blue-300">
-                            <tr>
-                                <th class="px-4 py-2 border-b border-gray-200 text-left text-l font-medium text-gray-800 uppercase tracking-wider">#</th>
-                                <th class="px-4 py-2 border-b border-gray-200 text-left text-l font-medium text-gray-800 uppercase tracking-wider">Barcode</th>
-                                <th class="px-4 py-2 border-b border-gray-200 text-left text-l font-medium text-gray-800 uppercase tracking-wider">Signature</th>
-                                <th class="px-4 py-2 border-b border-gray-200 text-left text-l font-medium text-gray-800 uppercase tracking-wider">Barcode Confidence</th>
-                                <th class="px-4 py-2 border-b border-gray-200 text-left text-l font-medium text-gray-800 uppercase tracking-wider">Signature Confidence</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            ${fileResults.map((barcode, index) => `
-                                <tr>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${index + 1}</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 font-mono">${barcode.code}</td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm">
-                                        ${barcode.hasSignature ? 
-                                            '<span class="text-green-500 font-medium">Detected</span>' : 
-                                            '<span class="text-red-500 font-medium">None</span>'}
-                                    </td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm">
-                                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                                            <div class="bg-blue-600 h-2.5 rounded-full" 
-                                                style="width: ${Math.min(100, barcode.confidence)}%"></div>
-                                        </div>
-                                        <span class="text-xs">${barcode.confidence.toFixed(1)}%</span>
-                                    </td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm">
-                                        ${barcode.hasSignature ? `
-                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
-                                                <div class="bg-green-600 h-2.5 rounded-full" 
-                                                    style="width: ${Math.min(100, barcode.signatureConfidence || 0)}%"></div>
-                                            </div>
-                                            <span class="text-xs">${(barcode.signatureConfidence || 0).toFixed(1)}%</span>
-                                        ` : `
-                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
-                                                <div class="bg-red-600 h-2.5 rounded-full" style="width: 0%"></div>
-                                            </div>
-                                            <span class="text-xs">0%</span>
-                                        `}
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
+            renderBarcodeDetails(fileResults);
+            
+            // Add event listener for filter changes
+            document.getElementById('signatureFilter').addEventListener('change', () => {
+                renderBarcodeDetails(fileResults);
+            });
         }
+        
         barcodeDetails.classList.remove('hidden');
         button.textContent = "Hide Details";
         button.dataset.showing = "true";
+    }
+}
+
+function renderBarcodeDetails(barcodes) {
+    const filterValue = document.getElementById('signatureFilter').value;
+    
+    // Filter barcode's based on selection but keep original indices
+    const filteredBarcodes = barcodes
+        .map((barcode, originalIndex) => ({ ...barcode, originalIndex }))
+        .filter(barcode => {
+            if (filterValue === 'hasSignature') return barcode.hasSignature;
+            if (filterValue === 'noSignature') return !barcode.hasSignature;
+            return true; // 'all' option
+        });
+
+        // <tr class="${barcode.hasSignature ? 'bg-green-50 border-green-500' : ''} hover:bg-blue-100 transition-colors duration-150 ease-in-out">
+
+    barcodeDetailsContent.innerHTML = `
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border border-gray-200">
+                <thead class="bg-blue-300">
+                    <tr>
+                        <th class="px-4 py-2 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">#</th>
+                        <th class="px-4 py-2 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">Barcode</th>
+                        <th class="px-4 py-2 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">Signature</th>
+                        <th class="px-4 py-2 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">Barcode Confidence</th>
+                        <th class="px-4 py-2 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">Signature Confidence</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    ${filteredBarcodes.map(barcode => `
+                        <tr class="${barcode.hasSignature ? '' : ''} hover:bg-blue-100 transition-colors duration-150 ease-in-out">
+                            <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${barcode.originalIndex + 1}</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 font-mono">${barcode.code}</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm">
+                                ${barcode.hasSignature ? 
+                                    '<span class="text-green-500 font-medium flex items-center">✅ Detected</span>' : 
+                                    '<span class="text-red-500 font-medium">❌ None</span>'}
+                            </td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm">
+                                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                    <div class="bg-blue-600 h-2.5 rounded-full" 
+                                        style="width: ${Math.min(100, barcode.confidence)}%"></div>
+                                </div>
+                                <span class="text-xs">${barcode.confidence.toFixed(1)}%</span>
+                            </td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm">
+                                ${barcode.hasSignature ? `
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                        <div class="bg-green-600 h-2.5 rounded-full" 
+                                            style="width: ${Math.min(100, barcode.signatureConfidence || 0)}%"></div>
+                                    </div>
+                                    <span class="text-xs">${(barcode.signatureConfidence || 0).toFixed(1)}%</span>
+                                ` : `
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                        <div class="bg-red-600 h-2.5 rounded-full" style="width: 0%"></div>
+                                    </div>
+                                    <span class="text-xs">0%</span>
+                                `}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    // Show message if no results after filtering
+    if (filteredBarcodes.length === 0) {
+        barcodeDetailsContent.innerHTML += `
+            <p class="text-gray-500 mt-4 text-center">
+                No barcodes match the current filter.
+            </p>
+        `;
     }
 }

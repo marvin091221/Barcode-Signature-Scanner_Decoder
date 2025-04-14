@@ -1,3 +1,4 @@
+ // ======================================== Initialization and Core Setup ========================================
 /**
  * @file script.js
  * @description Core functionality for the Barcode & Signature Scanner application.
@@ -15,7 +16,6 @@
 
 // DOM Elements - UI Components
 const progressModal = document.getElementById('progressModal');
-
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const fileList = document.getElementById('fileList');
@@ -41,42 +41,6 @@ let filesToProcess = [];
 let allBarcodeResults = [];
 /** @type {Dynamsoft.DBR.BarcodeReader} Instance of Dynamsoft barcode reader */
 let reader = null;
-
-/**
- * Initializes the Dynamsoft Barcode Reader with optimal settings for Code 39 detection.
- * 
- * @async
- * @function initializeDynamsoft
- * @throws {Error} If initialization fails or license is invalid
- * @returns {Promise<void>}
- */
-async function initializeDynamsoft() {
-    try {
-        // Initialize the barcode reader
-        reader = await Dynamsoft.DBR.BarcodeReader.createInstance();
-        
-        // CORRECTED: Use the proper method to update settings
-        let settings = await reader.getRuntimeSettings();
-
-        // Dynamsoft supports multiple formats
-        settings.barcodeFormatIds = Dynamsoft.DBR.EnumBarcodeFormat.BF_CODE_39; // Only Code 39 for now
-
-            // Dynamsoft.DBR.EnumBarcodeFormat.BF_QR_CODE |
-            // Dynamsoft.DBR.EnumBarcodeFormat.BF_CODE_128 |
-            // Dynamsoft.DBR.EnumBarcodeFormat.BF_UPC_A;
-
-        // Optimize for accuracy/speed
-        settings.deblurLevel = 3;          // Better for blurry barcodes
-        
-        // Apply the updated settings
-        await reader.updateRuntimeSettings(settings);
-        
-        console.log("Dynamsoft Barcode Reader initialized successfully");
-    } catch (ex) {
-        console.error("Initialization failed:", ex);
-        throw ex;
-    }
-}
 
 // Event Listeners
 dropZone.addEventListener('click', () => fileInput.click());
@@ -131,6 +95,8 @@ async function initializeAll() {
  // Call this when the page loads
  window.addEventListener('DOMContentLoaded', initializeAll);
 
+
+// ======================================== File Handling Functions ========================================
 /**
  * Functions for File Processing
  */
@@ -153,7 +119,7 @@ function handleFiles(files) {
     
     const validFiles = Array.from(files).filter(file => {
         const isValidType = file.type.match('image.*') || file.type === 'application/pdf';
-        const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
+        const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB limit
         
         if (!isValidType) {
             showError(`Invalid file type: ${file.name}. Only PDF, PNG, JPG are allowed.`);
@@ -229,7 +195,57 @@ function showError(message) {
     setTimeout(() => errorMessage.classList.add('hidden'), 5000);
 }
 
-// Function that processes library files and shows the progress bar
+// ======================================== Barcode Processing Functions ========================================
+/**
+ * Initializes the Dynamsoft Barcode Reader with optimal settings for Code 39 detection.
+ * 
+ * @async
+ * @function initializeDynamsoft
+ * @throws {Error} If initialization fails or license is invalid
+ * @returns {Promise<void>}
+ */
+async function initializeDynamsoft() {
+    try {
+        // Initialize the barcode reader
+        reader = await Dynamsoft.DBR.BarcodeReader.createInstance();
+        
+        // CORRECTED: Use the proper method to update settings
+        let settings = await reader.getRuntimeSettings();
+
+        // Dynamsoft supports multiple formats
+        settings.barcodeFormatIds = Dynamsoft.DBR.EnumBarcodeFormat.BF_CODE_39; // Only Code 39 for now
+
+            // Another baracode format just uncomment the line below and add | after Dynamsoft.DBR.EnumBarcodeFormat.BF_CODE_39;
+            // Dynamsoft.DBR.EnumBarcodeFormat.BF_QR_CODE |
+            // Dynamsoft.DBR.EnumBarcodeFormat.BF_CODE_128 |
+            // Dynamsoft.DBR.EnumBarcodeFormat.BF_UPC_A;
+
+        // Optimize for accuracy/speed
+        settings.deblurLevel = 3;          // Better for blurry barcode's
+        
+        // Apply the updated settings
+        await reader.updateRuntimeSettings(settings);
+        
+        console.log("Dynamsoft Barcode Reader initialized successfully");
+    } catch (ex) {
+        console.error("Initialization failed:", ex);
+        throw ex;
+    }
+}
+
+/**
+ * Processes all queued files sequentially, detecting barcodes and signatures.
+ * Updates the UI with progress and results.
+ * 
+ * Steps:
+ * 1. Initializes Dynamsoft if not already done.
+ * 2. Processes each file (PDF or image).
+ * 3. Detects barcodes and signatures.
+ * 4. Updates the results table.
+ * 
+ * @async
+ * @returns {Promise<void>}
+ */
 async function processFiles() {
     try {
         // Show modal when starting
@@ -350,7 +366,6 @@ async function processFiles() {
  *   - fileType: Always 'application/pdf'
  *   - fileName: Original file name
  */
-// Function to process PDF files with row detection
 async function processPDFWithRegionDetection(file) {
     const result = {
         barcodes: [],
@@ -423,7 +438,7 @@ async function processPDFWithRegionDetection(file) {
             }
         }
         
-        // Sort barcodes by page, then by position (top to bottom, then left to right)
+        // Sort barcode's by page, then by position (top to bottom, then left to right)
         result.barcodes.sort((a, b) => {
             // First sort by page number
             if (a.page !== b.page) {
@@ -450,7 +465,19 @@ async function processPDFWithRegionDetection(file) {
     return result;
 }
 
-// Function to process Image files with Dynamsoft 
+/**
+ * Processes an image file for barcode detection and signature analysis.
+ * 
+ * Steps:
+ * 1. Loads the image with size validation.
+ * 2. Creates a canvas with native resolution.
+ * 3. Configures optimized decoding settings for Dynamsoft.
+ * 4. Detects barcodes and analyzes nearby regions for signatures.
+ * 5. Sorts results by position.
+ * 
+ * @param {File} file - The image file to process
+ * @returns {Promise<Object>} Processing results (same structure as PDF processing)
+ */
 async function processImageWithDynamsoft(file) {
     const result = {
         barcodes: [],
@@ -606,6 +633,7 @@ function createDynamsoftBarcodeVisualization(sourceCanvas, barcode) {
     return canvas.toDataURL();
 }
 
+// ======================================== Signature Detection Functions ========================================
 /**
  * Analyzes the area to the right of a barcode for potential signatures.
  * Uses pixel analysis and pattern recognition to detect handwritten signatures.
@@ -849,7 +877,7 @@ function analyzeSignatureArea(imageData, width, height, options) {
     };
 }
 
-// Function to create a canvas from a file
+// ======================================== UI Update Functions ========================================
 /**
  * Updates the progress bar and status text in the UI.
  * Provides visual feedback during file processing.

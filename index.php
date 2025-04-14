@@ -22,10 +22,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Basic meta tags for proper rendering and mobile responsiveness -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#4B5563">
+
     <!-- Base64 encoded favicon for instant loading -->
     <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAABH0lEQVQ4jZ2TsUrDUBSGv5ObtCRpU6RQHFzcFAen4KBv4BOIm6Cg4CC+Qwfp4FOITyCCFEHo4Cq4ONSpFBrSm6RJk3sdhJKkaSD9t3M593z/OfdegULbtm2EKAC4rnsQhuE9gNBoNB4Mw7iSJKkmjuMkz/PexuPxc6PRaAHEO0YVQbIsKwKefd9/TNN0CKDrug0QWpZ1WqlUzvMjCoAfhuHQtu0XwzBUz/M+kyR5AnpFRFEEURRVYFiv1y/TNH3N5/MBMC0hJEli13XfgQfLsrr1ev1mF7EDsG37DugA98PhcAR8/QUQRVEpl8tn2Wx2K0nSMTM7/RJCKGaz2RQYAAPf9z+2VVqrQRAEvud5n7va/0f9N4AkSXIcxz+/AXZNu58fwVSzAAAAAElFTkSuQmCC">
     <title>Barcode & Signature Scanner</title>
@@ -61,6 +61,12 @@
         .barcode-canvas {
             display: none;
         }
+
+        .relative select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
     </style>
 </head>
 <body class="bg-gray-400 min-h-screen p-4">
@@ -93,7 +99,14 @@
         </div>
 
         <!-- Scan Button -->
-        <button id="scanBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg w-full transition-colors">
+        <button id="scanBtn" class="flex justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg w-full transition-colors gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                    <path d="M15 3v4a1 1 0 0 0 1 1h4"/>
+                    <path d="M18 17h-7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4l5 5v7a2 2 0 0 1-2 2"/>
+                    <path d="M16 17v2a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2"/>
+                </g>
+            </svg>
             Scan Documents
         </button>
         
@@ -119,10 +132,21 @@
             <div class="flex justify-between items-center my-4">
                 <h2 class="text-2xl font-semibold">Scan Results</h2>
                 <div class="flex space-x-2">
-                    <button id="exportBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                    <button id="exportBtn" class="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                            <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                                <path d="M14 3v4a1 1 0 0 0 1 1h4"/>
+                                <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2m-5-4v-6"/>
+                                <path d="M9.5 14.5L12 17l2.5-2.5"/>
+                            </g>
+                        </svg>
                         Export Results
                     </button>
-                    <button id="clearResultsBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+
+                    <button id="clearResultsBtn" class="flex items-center bg-red-600 hover:bg-red-800 text-white font-medium py-2 px-4 rounded-lg transition-colors gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16m-10 4v6m4-6v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
+                        </svg>
                         Clear Results
                     </button>
                 </div>
@@ -132,11 +156,11 @@
                 <table class="min-w-full bg-white border border-gray-200">
                     <thead class="bg-blue-300">
                         <tr>
-                            <th class="px-6 py-3 border-b border-gray-200 text-left text-l font-medium text-gray-800 uppercase tracking-wider">File</th>
-                            <th class="px-6 py-3 border-b border-gray-200 text-left text-l font-medium text-gray-800 uppercase tracking-wider">Barcodes Found</th>
-                            <th class="px-6 py-3 border-b border-gray-200 text-left text-l font-medium text-gray-800 uppercase tracking-wider">Signature</th>
-                            <th class="px-6 py-3 border-b border-gray-200 text-left text-l font-medium text-gray-800 uppercase tracking-wider">Status</th>
-                            <th class="px-6 py-3 border-b border-gray-200 text-left text-l font-medium text-gray-800 uppercase tracking-wider">Details</th>
+                            <th class="px-6 py-3 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">File</th>
+                            <th class="px-6 py-3 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">Barcode's Found</th>
+                            <th class="px-6 py-3 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">Signatures Found</th>
+                            <th class="px-6 py-3 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">Details</th>
                         </tr>
                     </thead>
                     <tbody id="resultsBody" class="divide-y divide-gray-200">
@@ -145,8 +169,27 @@
                 </table>
             </div>
             
+            <!-- Barcode details options -->
             <div id="barcodeDetails" class="hidden bg-gray-50 p-4 border-2 rounded-xl">
-                <h3 class="font-medium mb-2">Barcode Details</h3>
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-medium">Barcode Details</h3>
+                    <div class="flex items-center gap-2">
+                        <label class="text-center">Display options:</label>
+                        <div class="relative flex items-center">
+                            <select id="signatureFilter" class="appearance-none bg-white border-2 border-gray-300 rounded-md py-1 px-3 text-sm block focus:ring-blue-500 cursor-pointer pr-8">
+                                <option value="all">All</option>
+                                <option value="hasSignature">Has Signature</option>
+                                <option value="noSignature">No Signature</option>
+                            </select>
+                            <!-- Custom dropdown arrow -->
+                            <div class="pointer-events-none absolute right-2 inset-y-0 flex items-center text-gray-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24">
+                                    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9l6 6l6-6"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div id="barcodeDetailsContent" class="grid grid-cols-1 gap-4"></div>
             </div>
         </div>
