@@ -42,9 +42,11 @@ let allBarcodeResults = [];
 /** @type {Dynamsoft.DBR.BarcodeReader} Instance of Dynamsoft barcode reader */
 let reader = null;
 
+// Event listener for the close button
+document.getElementById('noFilesModalClose')?.addEventListener('click', hideNoFilesModal);
+
 // Event Listeners
 dropZone.addEventListener('click', () => fileInput.click());
-
 dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropZone.classList.add('border-green-500', 'bg-green-50');
@@ -71,6 +73,24 @@ fileInput.addEventListener('change', (e) => {
         handleFiles(e.target.files);
     }
 });
+
+// Function to show the no files modal with animation
+function showNoFilesModal() {
+    const modal = document.getElementById('noFilesModal');
+    modal.classList.add('show');
+    
+    // Prevent scrolling when modal is open
+    document.body.style.overflow = 'hidden';
+}
+
+// Function to hide the no files modal with animation
+function hideNoFilesModal() {
+    const modal = document.getElementById('noFilesModal');
+    modal.classList.remove('show');
+    
+    // Re-enable scrolling
+    document.body.style.overflow = 'auto';
+}
 
 scanBtn.addEventListener('click', processFiles);
 exportBtn.addEventListener('click', exportResults);
@@ -247,6 +267,12 @@ async function initializeDynamsoft() {
  * @returns {Promise<void>}
  */
 async function processFiles() {
+    // Check if no files are selected
+    if (filesToProcess.length === 0) {
+        showNoFilesModal();
+        return;
+    }
+
     try {
         // Show modal when starting
         progressModal.classList.remove('hidden');
@@ -933,50 +959,64 @@ function exportResults() {
         return;
     }
     
-    // CSV headers
-    let csvContent = "File Name,File Type,Barcode Type,Barcode Value,Confidence,Signature Detected,Signature Confidence,Status,Time\n";
+    // // CSV headers
+    // let csvContent = "File Name,File Type,Barcode Type,Barcode Value,Confidence,Signature Detected,Signature Confidence,Status,Time\n";
     
-    // Get all rows from results table
-    const rows = Array.from(resultsBody.querySelectorAll('tr'));
+    // // Get all rows from results table
+    // const rows = Array.from(resultsBody.querySelectorAll('tr'));
     
-    rows.forEach(row => {
-        const filename = row.dataset.filename;
-        const cells = row.querySelectorAll('td');
+    // rows.forEach(row => {
+    //     const filename = row.dataset.filename;
+    //     const cells = row.querySelectorAll('td');
         
-        const fileType = cells[0].querySelector('div:nth-child(2)').textContent;
-        const status = cells[3].querySelector('span').textContent;
-        const time = new Date().toLocaleString();
+    //     const fileType = cells[0].querySelector('div:nth-child(2)').textContent;
+    //     const status = cells[3].querySelector('span').textContent;
+    //     const time = new Date().toLocaleString();
         
-        // Get barcodes for this file
-        const fileBarcodes = allBarcodeResults.filter(b => b.fileName === filename);
+    //     // Get barcodes for this file
+    //     const fileBarcodes = allBarcodeResults.filter(b => b.fileName === filename);
         
-        if (fileBarcodes.length > 0) {
-            fileBarcodes.forEach(barcode => {
-                csvContent += `"${filename}",` +                                        // File Name
-                              `"${fileType}",` +                                        // File Type
-                              `"${barcode.format || 'Unknown'}",` +                     // Barcode Type
-                              `"${barcode.code}",` +                                    // Barcode Value
-                              `"${barcode.confidence?.toFixed(1) || '0'}%",` +          // Confidence
-                              `"${barcode.hasSignature ? 'Detected' : 'None'}",` +      // Signature Detected
-                              `"${barcode.signatureConfidence?.toFixed(1) || '0'}%",` + // Signature Confidence
-                              `"${status}",` +                                          // Status
-                              `"${time}"\n`;                                            // Time
-            });
-        } else {
-            // For files with no barcodes but potentially signatures
-            const signatureCell = cells[2].querySelector('span');
-            const hasSignature = signatureCell.textContent.includes('detected');
+    //     if (fileBarcodes.length > 0) {
+    //         fileBarcodes.forEach(barcode => {
+    //             csvContent += `"${filename}",` +                                        // File Name
+    //                           `"${fileType}",` +                                        // File Type
+    //                           `"${barcode.format || 'Unknown'}",` +                     // Barcode Type
+    //                           `"${barcode.code}",` +                                    // Barcode Value
+    //                           `"${barcode.confidence?.toFixed(1) || '0'}%",` +          // Confidence
+    //                           `"${barcode.hasSignature ? 'Detected' : 'None'}",` +      // Signature Detected
+    //                           `"${barcode.signatureConfidence?.toFixed(1) || '0'}%",` + // Signature Confidence
+    //                           `"${status}",` +                                          // Status
+    //                           `"${time}"\n`;                                            // Time
+    //         });
+    //     } else {
+    //         // For files with no barcodes but potentially signatures
+    //         const signatureCell = cells[2].querySelector('span');
+    //         const hasSignature = signatureCell.textContent.includes('detected');
             
-            csvContent += `"${filename}",` +                            // File Name
-                          `"${fileType}",` +                            // File Type
-                          `"",` +                                       // Barcode Type (empty)
-                          `"",` +                                       // Barcode Value (empty)
-                          `"0%",` +                                     // Confidence (0%)
-                          `"${hasSignature ? 'Detected' : 'None'}",` +  // Signature Detected
-                          `"0%",` +                                     // Signature Confidence (0%)
-                          `"${status}",` +                              // Status
-                          `"${time}"\n`;                                // Time
-        }
+    //         csvContent += `"${filename}",` +                            // File Name
+    //                       `"${fileType}",` +                            // File Type
+    //                       `"",` +                                       // Barcode Type (empty)
+    //                       `"",` +                                       // Barcode Value (empty)
+    //                       `"0%",` +                                     // Confidence (0%)
+    //                       `"${hasSignature ? 'Detected' : 'None'}",` +  // Signature Detected
+    //                       `"0%",` +                                     // Signature Confidence (0%)
+    //                       `"${status}",` +                              // Status
+    //                       `"${time}"\n`;                                // Time
+    //     }
+    // });
+
+    // Get the first processed filename to use for export
+    const firstFileName = filesToProcess.length > 0 ? 
+        filesToProcess[0].name.replace(/\.[^/.]+$/, "") : // Remove extension
+        "scan_results";
+    
+    // CSV headers
+    let csvContent = "Barcode,Signature\n";
+    
+    // Add all barcode results
+    allBarcodeResults.forEach(barcode => {
+        csvContent += `"${barcode.code}",` +                   // Barcode
+                      `"${barcode.hasSignature ? 1 : 0}"\n`;   // Signature (1=present, 0=absent)
     });
     
     // Create and download the CSV file
@@ -984,7 +1024,7 @@ function exportResults() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `scan_results_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `${firstFileName}_results.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();

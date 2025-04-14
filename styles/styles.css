@@ -1,0 +1,55 @@
+body.modal-open {
+    overflow: hidden;
+    padding-right: 15px; /* Prevent content shift when scrollbar disappears */
+}
+
+/* Add a slight delay to the content animation */
+#noFilesModal.show .modal-content {
+    transition-delay: 0.1s;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #10b981;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.barcode-canvas {
+    display: none;
+}
+
+.relative select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+/* No Files Modal Animation */
+#noFilesModal {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+#noFilesModal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+#noFilesModal .modal-content {
+    transform: translateY(-20px);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+}
+
+#noFilesModal.show .modal-content {
+    transform: translateY(0);
+    opacity: 1;
+}
