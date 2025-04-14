@@ -36,8 +36,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 
+    <!-- Back-up if the online library is down -->
+    <!-- <script src="./library/pdf.min.js"></script> -->
+    <!-- <script src="./library/pdf-lib.min.js"></script> -->
+
     <!-- Barcode Scanner and Decoder -->
-    <script src="https://cdn.jsdelivr.net/npm/dynamsoft-javascript-barcode@9.6.2/dist/dbr.js"></script>
+    <!-- Online Libraray for Dynamsoft -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/dynamsoft-javascript-barcode@9.6.2/dist/dbr.js"></script> -->
+
+    <script src="./library/dynamsoft-javascript-barcode-library.js"></script>
 
     <script>
         // Initialize license BEFORE any scanning operations
