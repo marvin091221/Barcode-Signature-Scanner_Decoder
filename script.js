@@ -45,6 +45,28 @@ let reader = null;
 // Event listener for the close button
 document.getElementById('noFilesModalClose')?.addEventListener('click', hideNoFilesModal);
 
+// Event listeners for the clear result confirmation modal buttons
+document.getElementById('confirmClearCancel')?.addEventListener('click', hideConfirmClearModal);
+
+// Confirm Clear Button Event Listener
+document.getElementById('confirmClearConfirm')?.addEventListener('click', () => {
+    hideConfirmClearModal();
+    showClearingModal();
+    
+    // Wait 3 seconds before actually clearing
+    setTimeout(() => {
+        clearResults();
+        hideClearingModal();
+        showClearSuccessModal();
+    }, 3000);
+});
+
+// Cancel Clear Button Event Listener
+document.getElementById('confirmClearCancel')?.addEventListener('click', hideConfirmClearModal);
+
+// Success Modal OK Button Event Listener
+document.getElementById('clearSuccessOk')?.addEventListener('click', hideClearSuccessModal);
+
 // Event Listeners
 dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', (e) => {
@@ -106,9 +128,88 @@ function hideLoadingIndicator() {
     document.body.style.overflow = 'auto';
 }
 
+// Show/hide progress modal with animation
+function showProgressModal() {
+    const modal = document.getElementById('progressModal');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.add('show'), 10);
+}
+
+function hideProgressModal() {
+    const modal = document.getElementById('progressModal');
+    modal.classList.remove('show');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+}
+
+// Show/hide export modal with animation
+function showExportModal() {
+    const modal = document.getElementById('exportModal');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.add('show'), 10);
+}
+
+function hideExportModal() {
+    const modal = document.getElementById('exportModal');
+    modal.classList.remove('show');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+}
+
+function showClearingModal() {
+    const modal = document.getElementById('clearingModal');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.add('show'), 10);
+    document.body.style.overflow = 'hidden';
+}
+
+function hideClearingModal() {
+    const modal = document.getElementById('clearingModal');
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }, 300);
+}
+
+function showClearSuccessModal() {
+    const modal = document.getElementById('clearSuccessModal');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.add('show'), 10);
+    document.body.style.overflow = 'hidden';
+}
+
+function hideClearSuccessModal() {
+    const modal = document.getElementById('clearSuccessModal');
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }, 300);
+}
+
 scanBtn.addEventListener('click', processFiles);
 exportBtn.addEventListener('click', exportResults);
-clearResultsBtn.addEventListener('click', clearResults);
+
+clearResultsBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    showConfirmClearModal();
+})
+
+// Helper functions for the clear result confirmation modal:
+function showConfirmClearModal() {
+    const modal = document.getElementById('confirmClearModal');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.add('show'), 10);
+    document.body.style.overflow = 'hidden';
+}
+
+function hideConfirmClearModal() {
+    const modal = document.getElementById('confirmClearModal');
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }, 300);
+}
 
 async function initializeAll() {
     showLoadingIndicator();
@@ -132,8 +233,10 @@ async function initializeAll() {
 }
 
 // Call this when the page loads
-window.addEventListener('DOMContentLoaded', initializeAll);
-
+window.addEventListener('DOMContentLoaded', () => {
+    initializeAll();
+    // setupClearResultsConfirmation();
+});
 
 // ======================================== File Handling Functions ========================================
 /**
@@ -293,8 +396,10 @@ async function processFiles() {
     }
 
     try {
+        showProgressModal();
+
         // Show modal when starting
-        progressModal.classList.remove('hidden');
+        // progressModal.classList.remove('hidden');
 
         // Initialize Dynamsoft if not already done
         if (!reader) await initializeDynamsoft();
@@ -384,11 +489,15 @@ async function processFiles() {
         // Hide modal when complete
         setTimeout(() => progressModal.classList.add('hidden'), 1000);
 
+        // When complete:
+        setTimeout(hideProgressModal, 1000);
     } catch (error) {
         console.error("Processing failed:", error);
         showError("Failed to initialize barcode scanner. Please refresh the page.");
         scanBtn.disabled = false;
         progressModal.classList.add('hidden');
+
+        setTimeout(hideProgressModal, 300);
     }
 }
 
@@ -1024,30 +1133,38 @@ function exportResults() {
     //     }
     // });
 
-    // Get the first processed filename to use for export
-    const firstFileName = filesToProcess.length > 0 ?
-        filesToProcess[0].name.replace(/\.[^/.]+$/, "") : // Remove extension
-        "scan_results";
+    showExportModal();
 
-    // CSV headers
-    let csvContent = "Barcode,Signature\n";
+    // Delay the export to allow the modal to be seen
+    setTimeout(() => {
+        // Get the first processed filename to use for export
+        const firstFileName = filesToProcess.length > 0 ?
+            filesToProcess[0].name.replace(/\.[^/.]+$/, "") : // Remove extension
+            "scan_results";
 
-    // Add all barcode results
-    allBarcodeResults.forEach(barcode => {
-        csvContent += `"${barcode.code}",` +                   // Barcode
-            `"${barcode.hasSignature ? 1 : 0}"\n`;   // Signature (1=present, 0=absent)
-    });
+        // CSV headers
+        let csvContent = "Barcode,Signature\n";
 
-    // Create and download the CSV file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${firstFileName}_results.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        // Add all barcode results
+        allBarcodeResults.forEach(barcode => {
+            csvContent += `"${barcode.code}",` +                   // Barcode
+                `"${barcode.hasSignature ? 1 : 0}"\n`;   // Signature (1=present, 0=absent)
+        });
+
+        // Create and download the CSV file
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `${firstFileName}_results.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Hide the modal after a short delay
+        setTimeout(hideExportModal, 500);
+    }, 1000);
 }
 
 /**
@@ -1072,4 +1189,17 @@ function clearResults() {
     barcodeDetails.classList.add('hidden');
     resultsSection.classList.add('hidden');
     fileInput.value = '';
+}
+
+function setupClearResultsConfirmation() {
+    const clearBtn = document.getElementById('clearResultsBtn');
+    const cancelBtn = document.getElementById('confirmClearCancel');
+    const confirmBtn = document.getElementById('confirmClearConfirm');
+
+    clearBtn.addEventListener('click', showConfirmClearModal);
+    cancelBtn.addEventListener('click', hideConfirmClearModal);
+    confirmBtn.addEventListener('click', () => {
+        hideConfirmClearModal();
+        clearResults();
+    });
 }

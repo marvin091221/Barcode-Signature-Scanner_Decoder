@@ -10,6 +10,10 @@ body.modal-open {
     transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
+#loadingIndicator p {
+    animation: fadeInUp 0.5s ease;
+}
+
 #loadingIndicator.show {
     opacity: 1;
     visibility: visible;
@@ -19,6 +23,7 @@ body.modal-open {
     transform: scale(0.9);
     transition: transform 0.3s ease, opacity 0.3s ease;
     opacity: 0;
+    transition-delay: 0.1s;
 }
 
 #loadingIndicator.show .modal-content {
@@ -26,13 +31,27 @@ body.modal-open {
     opacity: 1;
 }
 
-/* For smoother loading transitions */
-#loadingIndicator .modal-content {
-    transition-delay: 0.1s;
+/* No Files Modal Animation */
+#noFilesModal {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
-#loadingIndicator p {
-    animation: fadeInUp 0.5s ease;
+#noFilesModal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+#noFilesModal .modal-content {
+    transform: translateY(-20px);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+}
+
+#noFilesModal.show .modal-content {
+    transform: translateY(0);
+    opacity: 1;
 }
 
 @keyframes fadeInUp {
@@ -54,11 +73,6 @@ body.modal-open {
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
-}
-
-/* Add a slight delay to the content animation */
-#noFilesModal.show .modal-content {
-    transition-delay: 0.1s;
 }
 
 .spinner {
@@ -84,25 +98,161 @@ body.modal-open {
     appearance: none;
 }
 
-/* No Files Modal Animation */
-#noFilesModal {
+/* Progress Modal Animation */
+#progressModal {
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
-#noFilesModal.show {
+#progressModal.show {
     opacity: 1;
     visibility: visible;
 }
 
-#noFilesModal .modal-content {
+#progressModal .modal-content {
     transform: translateY(-20px);
     transition: transform 0.3s ease, opacity 0.3s ease;
     opacity: 0;
 }
 
-#noFilesModal.show .modal-content {
+#progressModal.show .modal-content {
     transform: translateY(0);
     opacity: 1;
+}
+
+/* Export Modal Animation */
+#exportModal {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+#exportModal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+#exportModal .modal-content {
+    transform: scale(0.9);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+}
+
+#exportModal.show .modal-content {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* Confirmation Modal Animation */
+#confirmClearModal {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+#confirmClearModal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+#confirmClearModal .modal-content {
+    transform: scale(0.9);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+}
+
+#confirmClearModal.show .modal-content {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* Clearing Progress Modal Animation */
+#clearingModal {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+#clearingModal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+#clearingModal .modal-content {
+    transform: scale(0.9);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+}
+
+#clearingModal.show .modal-content {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* Clear Success Modal Animation */
+#clearSuccessModal {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+#clearSuccessModal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+#clearSuccessModal .modal-content {
+    transform: translateY(-20px);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+}
+
+#clearSuccessModal.show .modal-content {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+/* Common modal styles */
+.modal-content {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 24rem;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.modal-button {
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.modal-button-primary {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.modal-button-primary:hover {
+    background-color: #2563eb;
+}
+
+.modal-button-secondary {
+    background-color: #e5e7eb;
+    color: #4b5563;
+}
+
+.modal-button-secondary:hover {
+    background-color: #d1d5db;
 }

@@ -34,7 +34,7 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.1.2/dist/tailwind.min.css" rel="stylesheet">
 
     <!-- CSS styles -->
-    <link rel="stylesheet" href="/styles/styles.css">
+    <link rel="stylesheet" href="./styles/styles.css">
     
     <!-- PDF reader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js"></script>
@@ -49,7 +49,7 @@
     <!-- <script src="https://cdn.jsdelivr.net/npm/dynamsoft-javascript-barcode@9.6.2/dist/dbr.js"></script> -->
 
     <!-- Back-up if the online library is down -->
-    <script src="/library/dynamsoft-javascript-barcode-library.js"></script>
+    <script src="./library/dynamsoft-javascript-barcode-library.js"></script>
 
     <script>
         // Initialize license BEFORE any scanning operations
@@ -119,7 +119,7 @@
         
         <!-- Progress Modal -->
         <div id="progressModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <div class="modal-content">
                 <div class="flex justify-center mb-4">
                     <div class="spinner"></div>
                 </div>
@@ -134,6 +134,65 @@
             </div>
         </div>
 
+        <!-- Export Modal -->
+        <div id="exportModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="modal-content">
+                <div class="flex justify-center mb-4">
+                    <div class="spinner"></div>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">Exporting Results</h3>
+                <p class="text-gray-600">Please wait a moment while we prepare your file for download...</p>
+            </div>
+        </div>
+
+        <!-- Clear Results Confirmation Modal -->
+        <div id="confirmClearModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal hidden">
+            <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+                <div class="flex justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-center mb-2">Clear All Results?</h3>
+                <p class="text-sm text-gray-600 text-center mb-4">This will remove all scan results and cannot be undone.</p>
+                <div class="flex justify-center gap-4">
+                    <button id="confirmClearCancel" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button id="confirmClearConfirm" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                        Clear Results
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Clearing Progress Modal -->
+        <div id="clearingModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal hidden">
+            <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+                <div class="flex justify-center mb-4">
+                    <div class="spinner"></div>
+                </div>
+                <h3 class="text-lg font-semibold text-center mb-2">Clearing Results</h3>
+                <p class="text-sm text-gray-600 text-center">Please wait a moment while we clear all results...</p>
+            </div>
+        </div>
+        <!-- Clear Success Modal -->
+        <div id="clearSuccessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+                <div class="flex justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-center mb-2">Results Cleared</h3>
+                <p class="text-sm text-gray-600 text-center mb-4">All scan results have been cleared successfully.</p>
+                <div class="flex justify-center">
+                    <button id="clearSuccessOk" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Results Section -->
         <div id="resultsSection" class="hidden">
             <div class="flex justify-between items-center my-4">
@@ -142,12 +201,12 @@
                     <button id="exportBtn" class="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
                             <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
-                                <path d="M14 3v4a1 1 0 0 0 1 1h4"/>
-                                <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2m-5-4v-6"/>
-                                <path d="M9.5 14.5L12 17l2.5-2.5"/>
+                                <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+                                <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2m-5-4v-6" />
+                                <path d="M9.5 14.5L12 17l2.5-2.5" />
                             </g>
                         </svg>
-                        Export Results
+                        <span class="export-text">Export Results</span>
                     </button>
 
                     <button id="clearResultsBtn" class="flex items-center bg-red-600 hover:bg-red-800 text-white font-medium py-2 px-4 rounded-lg transition-colors gap-2">
@@ -207,7 +266,7 @@
         <canvas id="processingCanvas"></canvas>
     </div>
 
-    <script src="/script.js"></script>
-    <script src="/addResultToTable_showBarcodeDetails.js"></script>
+    <script src="./script.js"></script>
+    <script src="./addResultToTable_showBarcodeDetails.js"></script>
 </body>
 </html>
