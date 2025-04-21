@@ -20,7 +20,6 @@ function addResultToTable(filename, result) {
     const row = document.createElement('tr');
     row.dataset.filename = filename;
     
-    // Filter for Code 39 barcodes only
     const code39Barcodes = result.barcodes.filter(b => 
         b.format === 'CODE_39' && b.confidence >= 30
     );
@@ -74,18 +73,17 @@ function addResultToTable(filename, result) {
     row.querySelector('.view-details').addEventListener('click', showBarcodeDetails);
 }
 
+// Show barcode details
 function showBarcodeDetails(event) {
     const button = event.target;
     const filename = button.dataset.filename;
     const isShowing = button.dataset.showing === "true";
     
     if (isShowing) {
-        // Hide details
         barcodeDetails.classList.add('hidden');
         button.textContent = "View Details";
         button.dataset.showing = "false";
     } else {
-        // Show details
         const fileResults = allBarcodeResults
             .filter(b => b.fileName === filename && b.format === 'CODE_39');
     
@@ -97,8 +95,6 @@ function showBarcodeDetails(event) {
             `;
         } else {
             renderBarcodeDetails(fileResults);
-            
-            // Add event listener for filter changes
             document.getElementById('signatureFilter').addEventListener('change', () => {
                 renderBarcodeDetails(fileResults);
             });
@@ -110,19 +106,17 @@ function showBarcodeDetails(event) {
     }
 }
 
+// Render barcode details
 function renderBarcodeDetails(barcodes) {
     const filterValue = document.getElementById('signatureFilter').value;
     
-    // Filter barcode's based on selection but keep original indices
     const filteredBarcodes = barcodes
         .map((barcode, originalIndex) => ({ ...barcode, originalIndex }))
         .filter(barcode => {
             if (filterValue === 'hasSignature') return barcode.hasSignature;
             if (filterValue === 'noSignature') return !barcode.hasSignature;
-            return true; // 'all' option
+            return true;
         });
-
-        // <tr class="${barcode.hasSignature ? 'bg-green-50 border-green-500' : ''} hover:bg-blue-100 transition-colors duration-150 ease-in-out">
 
     barcodeDetailsContent.innerHTML = `
         <div class="overflow-x-auto">
@@ -131,8 +125,8 @@ function renderBarcodeDetails(barcodes) {
                     <tr>
                         <th class="px-4 py-2 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">#</th>
                         <th class="px-4 py-2 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">Barcode</th>
-                        <th class="px-4 py-2 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">Signature</th>
                         <th class="px-4 py-2 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">Barcode Confidence</th>
+                        <th class="px-4 py-2 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">Signature</th>
                         <th class="px-4 py-2 border-b border-gray-200 text-left text-sm font-medium text-gray-800 uppercase tracking-wider">Signature Confidence</th>
                     </tr>
                 </thead>
@@ -142,16 +136,16 @@ function renderBarcodeDetails(barcodes) {
                             <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${barcode.originalIndex + 1}</td>
                             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 font-mono">${barcode.code}</td>
                             <td class="px-4 py-2 whitespace-nowrap text-sm">
-                                ${barcode.hasSignature ? 
-                                    '<span class="text-green-500 font-medium flex items-center">✅ Detected</span>' : 
-                                    '<span class="text-red-500 font-medium">❌ None</span>'}
-                            </td>
-                            <td class="px-4 py-2 whitespace-nowrap text-sm">
                                 <div class="w-full bg-gray-200 rounded-full h-2.5">
                                     <div class="bg-blue-600 h-2.5 rounded-full" 
                                         style="width: ${Math.min(100, barcode.confidence)}%"></div>
                                 </div>
                                 <span class="text-xs">${barcode.confidence.toFixed(1)}%</span>
+                            </td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm">
+                                ${barcode.hasSignature ? 
+                                    '<span class="text-green-500 font-medium flex items-center">✅ Detected</span>' : 
+                                    '<span class="text-red-500 font-medium">❌ None</span>'}
                             </td>
                             <td class="px-4 py-2 whitespace-nowrap text-sm">
                                 ${barcode.hasSignature ? `
@@ -174,7 +168,6 @@ function renderBarcodeDetails(barcodes) {
         </div>
     `;
 
-    // Show message if no results after filtering
     if (filteredBarcodes.length === 0) {
         barcodeDetailsContent.innerHTML += `
             <p class="text-gray-500 mt-4 text-center">

@@ -23,33 +23,30 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="theme-color" content="#4B5563">
-
-    <!-- Base64 encoded favicon for instant loading -->
     <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAABH0lEQVQ4jZ2TsUrDUBSGv5ObtCRpU6RQHFzcFAen4KBv4BOIm6Cg4CC+Qwfp4FOITyCCFEHo4Cq4ONSpFBrSm6RJk3sdhJKkaSD9t3M593z/OfdegULbtm2EKAC4rnsQhuE9gNBoNB4Mw7iSJKkmjuMkz/PexuPxc6PRaAHEO0YVQbIsKwKefd9/TNN0CKDrug0QWpZ1WqlUzvMjCoAfhuHQtu0XwzBUz/M+kyR5AnpFRFEEURRVYFiv1y/TNH3N5/MBMC0hJEli13XfgQfLsrr1ev1mF7EDsG37DugA98PhcAR8/QUQRVEpl8tn2Wx2K0nSMTM7/RJCKGaz2RQYAAPf9z+2VVqrQRAEvud5n7va/0f9N4AkSXIcxz+/AXZNu58fwVSzAAAAAElFTkSuQmCC">
     <title>Barcode & Signature Scanner</title>
     <meta name="description" content="A web application for scanning and decoding barcode's and signatures from documents.">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.1.2/dist/tailwind.min.css" rel="stylesheet">
 
-    <!-- CSS styles -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.1.2/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="./styles/styles.css">
     
-    <!-- PDF reader -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <!-- Online Library for PDF reader -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script> -->
 
-    <!-- Back-up if the online library is down -->
-    <!-- <script src="./library/pdf.min.js"></script> -->
-    <!-- <script src="./library/pdf-lib.min.js"></script> -->
-
-    <!-- Barcode Scanner and Decoder -->
     <!-- Online Library for Dynamsoft -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/dynamsoft-javascript-barcode@9.6.2/dist/dbr.js"></script> -->
 
     <!-- Back-up if the online library is down -->
     <script src="./library/dynamsoft-javascript-barcode-library.js"></script>
+
+    <!-- Back-up if the online library is down -->
+    <script src="./library/pdf.min.js"></script>
+    <script src="./library/pdf-lib.min.js"></script>
+
 
     <script>
         // Initialize license BEFORE any scanning operations
@@ -58,11 +55,9 @@
     </script>
 </head>
 <body class="bg-gray-400 min-h-screen p-4">
-
     <!-- No Files Modal -->
     <div id="noFilesModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-            <!-- Rest of your modal content remains the same -->
             <div class="flex justify-center mb-4">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -71,7 +66,7 @@
             <h3 class="text-lg font-semibold text-center mb-2">No Files Uploaded</h3>
             <p class="text-sm text-gray-600 text-center mb-4">Please upload PDF or image files before scanning.</p>
             <div class="flex justify-center">
-                <button id="noFilesModalClose" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <button id="noFilesModalClose" class="px-10 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                     OK
                 </button>
             </div>
@@ -82,7 +77,7 @@
         <div class="modal-content bg-white p-6 rounded-lg text-center">
             <div class="spinner mx-auto"></div>
             <p class="mt-4 text-lg">Loading scanner components...</p>
-            <p id="loadingProgress" class="text-sm text-gray-600">Initializing OpenCV</p>
+            <p id="loadingProgress" class="text-sm text-gray-600">Initializing scanner</p>
         </div>
     </div>
 
@@ -91,8 +86,8 @@
         <p class="text-gray-600 text-center mb-6">Upload documents to scan for barcodes and signatures</p>
 
         <!-- File Upload Section --> 
-        <div class="flex flex-col items-center">
-            <input id="fileInput" type="file" accept=".pdf,.png,.jpg,.jpeg" class="hidden" multiple />
+        <form id="uploadForm" enctype="multipart/form-data" class="flex flex-col items-center">
+            <input id="fileInput" type="file" name="files[]" accept=".pdf,.png,.jpg,.jpeg" class="hidden" multiple />
             <div id="dropZone" class="border-4 border-dashed border-gray-600 py-6 px-12 w-full text-center rounded-2xl mb-4 hover:bg-gray-50 cursor-pointer transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-blue-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -103,7 +98,7 @@
                 <div id="fileList" class="w-full mt-4"></div>
                 <p id="errorMessage" class="text-red-500 text-center mt-2 hidden"></p>
             </div>
-        </div>
+        </form>
 
         <!-- Scan Button -->
         <button id="scanBtn" class="flex justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg w-full transition-colors gap-2">
@@ -135,13 +130,22 @@
         </div>
 
         <!-- Export Modal -->
-        <div id="exportModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-            <div class="modal-content">
+        <div id="exportModal" class="fixed inset-0 px-6 py-10 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
                 <div class="flex justify-center mb-4">
-                    <div class="spinner"></div>
+                    <!-- <div class="spinner"></div> -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="45" height="45" viewBox="0 0 24 24">
+                        <g stroke="#10b981" stroke-width="1">
+                            <circle cx="12" cy="12" r="9.5" fill="none" stroke-linecap="round" stroke-width="3">
+                                <animate attributeName="stroke-dasharray" calcMode="spline" dur="1.5s" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" keyTimes="0;0.475;0.95;1" repeatCount="indefinite" values="0 150;42 150;42 150;42 150" />
+                                <animate attributeName="stroke-dashoffset" calcMode="spline" dur="1.5s" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" keyTimes="0;0.475;0.95;1" repeatCount="indefinite" values="0;-16;-59;-59" />
+                            </circle>
+                            <animateTransform attributeName="transform" dur="2s" repeatCount="indefinite" type="rotate" values="0 12 12;360 12 12" />
+                        </g>
+                    </svg>
                 </div>
-                <h3 class="text-lg font-semibold mb-2">Exporting Results</h3>
-                <p class="text-gray-600">Please wait a moment while we prepare your file for download...</p>
+                <h3 class="text-lg font-semibold text-center mb-2">Exporting Results</h3>
+                <p class="text-sm text-gray-600 text-center mb-4">Please wait while we prepare your export...</p>
             </div>
         </div>
 
@@ -186,8 +190,42 @@
                 <h3 class="text-lg font-semibold text-center mb-2">Results Cleared</h3>
                 <p class="text-sm text-gray-600 text-center mb-4">All scan results have been cleared successfully.</p>
                 <div class="flex justify-center">
-                    <button id="clearSuccessOk" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <button id="clearSuccessOk" class="px-10 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                         OK
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Options Modal -->
+        <div id="exportOptionsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+                <h3 class="text-lg font-semibold text-center mb-4">Export Options</h3>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Signature:</label>
+                    <div class="flex flex-col space-y-2">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="exportFilter" value="all" class="form-radio h-4 w-4 text-blue-600" checked>
+                            <span class="ml-2">All barcodes</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="exportFilter" value="hasSignature" class="form-radio h-4 w-4 text-blue-600">
+                            <span class="ml-2">Barcodes with signature</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="exportFilter" value="noSignature" class="form-radio h-4 w-4 text-blue-600">
+                            <span class="ml-2">Barcodes without signature</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="flex justify-center gap-4">
+                    <button id="exportOptionsCancel" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button id="exportOptionsConfirm" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Export
                     </button>
                 </div>
             </div>
@@ -266,7 +304,7 @@
         <canvas id="processingCanvas"></canvas>
     </div>
 
-    <script src="./script.js"></script>
-    <script src="./addResultToTable_showBarcodeDetails.js"></script>
+   <script src="./script.js"></script>
+   <script src="./addResultToTable_showBarcodeDetails.js"></script>
 </body>
 </html>
