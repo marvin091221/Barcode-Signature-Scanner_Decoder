@@ -20,6 +20,7 @@ This is the library that is use for barcodscanner and for the PDF file
 </script>
 
 ========================================================================================================================
+
 How Dynamsoft is Used in script.js
 
 A. Initialization
