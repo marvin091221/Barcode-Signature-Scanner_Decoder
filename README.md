@@ -19,7 +19,7 @@ This is the library that is use for barcodscanner and for the PDF file
     Dynamsoft.DBR.BarcodeReader.engineResourcePath = "https://cdn.jsdelivr.net/npm/dynamsoft-javascript-barcode@9.6.2/dist/";
 </script>
 
-========================================================================================================================
+===========================================================================
 
 How Dynamsoft is Used in script.js
 
@@ -68,7 +68,7 @@ resultPoints: [[x1,y1], ...] // Barcode corner coordinates
 }
 }
 
-========================================================================================================================
+===========================================================================
 
 - Signture detection
 
