@@ -1,5 +1,8 @@
 # Barcode-Signature-Scanner_Decoder
 
+DynamSoft Link : 
+https://www.dynamsoft.com/
+
 This is the library that is use for barcodscanner and for the PDF file
 
  <!-- PDF reader -->
@@ -29,7 +32,8 @@ This is the library that is use for barcodscanner and for the PDF file
         Dynamsoft.DBR.BarcodeReader.loadWasm();
 </script>
 
-========================================================================================================================
+======================================================================================================================================================
+
 How Dynamsoft is Used in script.js
 
 A. Initialization
@@ -77,7 +81,7 @@ resultPoints: [[x1,y1], ...] // Barcode corner coordinates
 }
 }
 
-========================================================================================================================
+======================================================================================================================================================
 
 - Signture detection
 
