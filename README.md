@@ -10,13 +10,23 @@ This is the library that is use for barcodscanner and for the PDF file
 
 - The Dynamsoft Barcode Reader (DBR) is a high-performance SDK designed to detect and decode 1D/2D barcodes from images, PDFs, and video streams. It is used in the provided script.js to scan barcodes in uploaded files (PDFs and images).
 - The library is initialized in initializeDynamsoft()
-  <!-- Barcode Scanner and Decoder -->
+  <!-- Barcode Scanner and Decoder LIbrary -->
   <script src="https://cdn.jsdelivr.net/npm/dynamsoft-javascript-barcode@9.6.2/dist/dbr.js"></script>
 
 <script>
-    // Initialize license BEFORE any scanning operations
-    Dynamsoft.DBR.BarcodeReader.license = 'DLS2eyJoYW5kc2hha2VDb2RlIjoiMTAzODY5NTMyLVRYbFhaV0pRY205cSIsIm1haW5TZXJ2ZXJVUkwiOiJodHRwczovL21kbHMuZHluYW1zb2Z0b25saW5lLmNvbSIsIm9yZ2FuaXphdGlvbklEIjoiMTAzODY5NTMyIiwic3RhbmRieVNlcnZlclVSTCI6Imh0dHBzOi8vc2Rscy5keW5hbXNvZnRvbmxpbmUuY29tIiwiY2hlY2tDb2RlIjoxMDQ2ODk4MzQ4fQ==';
-    Dynamsoft.DBR.BarcodeReader.engineResourcePath = "https://cdn.jsdelivr.net/npm/dynamsoft-javascript-barcode@9.6.2/dist/";
+     // Initialize license BEFORE any scanning operations
+
+        // Online Key license
+        // Desktop/Server/Embedded
+        // Dynamsoft.DBR.BarcodeReader.license = 't0081YQEAALmfgv2wIOnhZqELQff151Sfowr7X4bl6rzfyEIF2l0b9njuaCxkJTFLR2jPoQKGybXHGSfbPJBHnknG88g19y/7ZuB9M60q2SuSJEfI;t0082YQEAAEUCEu0lI1Xg9kXFa+Ty+vsnpSEOB8tnwdGHHueMdNxa8V+1oqpcbTVed8MJ7VVV7gl7vZVpUpzrNQByPYYuevDz+2bgfTOtKtkrEShIYw==;t0082YQEAAEdbwMwFMfQ49q/AH3mU6RACvEYgnzj0v5GSU0tR2OqjsRTmULoFauSlRkys22tCOBg8pWwrvPn+swiUPavLe/F+3wy8b6ZVJXsFDFBIYQ==';
+
+        // Local Key license
+        // JavaScript Web
+        Dynamsoft.DBR.BarcodeReader.license = 'DLS2eyJoYW5kc2hha2VDb2RlIjoiMTAzODY5NTMyLVRYbFhaV0pRY205cSIsIm1haW5TZXJ2ZXJVUkwiOiJodHRwczovL21kbHMuZHluYW1zb2Z0b25saW5lLmNvbSIsIm9yZ2FuaXphdGlvbklEIjoiMTAzODY5NTMyIiwic3RhbmRieVNlcnZlclVSTCI6Imh0dHBzOi8vc2Rscy5keW5hbXNvZnRvbmxpbmUuY29tIiwiY2hlY2tDb2RlIjoxMDQ2ODk4MzQ4fQ==';
+        Dynamsoft.DBR.BarcodeReader.engineResourcePath = "https://cdn.jsdelivr.net/npm/dynamsoft-javascript-barcode@9.6.2/dist/";
+
+        // Load wasm in advance
+        Dynamsoft.DBR.BarcodeReader.loadWasm();
 </script>
 
 ========================================================================================================================

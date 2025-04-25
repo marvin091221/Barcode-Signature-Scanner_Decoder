@@ -1,24 +1,3 @@
-<!--
-/**
- * @file index.php
- * @description Main entry point for the Barcode & Signature Scanner web application.
- *             This application allows users to scan barcode's (primarily Code 39)
- *             and detect signatures from both images and PDF files.
- * 
- * Key Features:
- * - Supports PDF and image file uploads
- * - Code 39 barcode scanning
- * - Signature detection adjacent to barcode's
- * - Real-time progress feedback
- * - Results export functionality
- * 
- * Dependencies:
- * - Dynamsoft Barcode Reader v9.6.2
- * - PDF.js v2.12.313
- * - PDF-lib v1.17.1
- * - Tailwind CSS v2.1.2
- */
--->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -50,8 +29,18 @@
 
     <script>
         // Initialize license BEFORE any scanning operations
+
+        // Online Key license
+        // Desktop/Server/Embedded
+        // Dynamsoft.DBR.BarcodeReader.license = 't0081YQEAALmfgv2wIOnhZqELQff151Sfowr7X4bl6rzfyEIF2l0b9njuaCxkJTFLR2jPoQKGybXHGSfbPJBHnknG88g19y/7ZuB9M60q2SuSJEfI;t0082YQEAAEUCEu0lI1Xg9kXFa+Ty+vsnpSEOB8tnwdGHHueMdNxa8V+1oqpcbTVed8MJ7VVV7gl7vZVpUpzrNQByPYYuevDz+2bgfTOtKtkrEShIYw==;t0082YQEAAEdbwMwFMfQ49q/AH3mU6RACvEYgnzj0v5GSU0tR2OqjsRTmULoFauSlRkys22tCOBg8pWwrvPn+swiUPavLe/F+3wy8b6ZVJXsFDFBIYQ==';
+
+        // Local Key license
+        // JavaScript Web
         Dynamsoft.DBR.BarcodeReader.license = 'DLS2eyJoYW5kc2hha2VDb2RlIjoiMTAzODY5NTMyLVRYbFhaV0pRY205cSIsIm1haW5TZXJ2ZXJVUkwiOiJodHRwczovL21kbHMuZHluYW1zb2Z0b25saW5lLmNvbSIsIm9yZ2FuaXphdGlvbklEIjoiMTAzODY5NTMyIiwic3RhbmRieVNlcnZlclVSTCI6Imh0dHBzOi8vc2Rscy5keW5hbXNvZnRvbmxpbmUuY29tIiwiY2hlY2tDb2RlIjoxMDQ2ODk4MzQ4fQ==';
         Dynamsoft.DBR.BarcodeReader.engineResourcePath = "https://cdn.jsdelivr.net/npm/dynamsoft-javascript-barcode@9.6.2/dist/";
+
+        // Load wasm in advance
+        Dynamsoft.DBR.BarcodeReader.loadWasm();
     </script>
 </head>
 <body class="bg-gray-400 min-h-screen p-4">
@@ -119,7 +108,7 @@
                     <div class="spinner"></div>
                 </div>
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold">Scanning Progress</h3>
+                    <h3 class="text-lg font-semibold">Scanning Progress...</h3>
                     <span id="progressPercent" class="font-medium">0%</span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2.5 mb-4">
