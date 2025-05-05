@@ -35,9 +35,21 @@ async function initializeDynamsoft() {
         
         // Configure runtime settings for optimal Code 39 scanning
         let settings = await reader.getRuntimeSettings();
+        // settings.barcodeFormatIds = Dynamsoft.DBR.EnumBarcodeFormat.BF_CODE_39;
         settings.barcodeFormatIds = Dynamsoft.DBR.EnumBarcodeFormat.BF_CODE_39;
-        settings.deblurLevel = 3; // Higher deblur level for better recognition
+        settings.deblurLevel = 5; // Higher deblur level for better recognition
+        settings.minResultConfidence = 30; // Minimum confidence level for results
+        settings.minBarcodeTextLength = 4; // Minimum barcode length to consider
+        settings.expectedBarcodesCount = 0; // 0 means unlimited
+        settings.timeout = 5000; // 5 seconds timeout per image
+
+        // Update the settings
         await reader.updateRuntimeSettings(settings);
+
+        // Set additional parameters for better accuracy
+        await reader.setModeArgument("BinarizationModes", 0, "EnableFillBinaryVacancy", "1");
+        await reader.setModeArgument("LocalizationModes", 2, "EnableFillBinaryVacancy", "1");
+        
         console.log("Dynamsoft Barcode Reader initialized successfully");
     } catch (ex) {
         console.error("Initialization failed:", ex);
@@ -273,18 +285,53 @@ async function processPDFWithRegionDetection(file) {
             // Process each detected barcode
             for (const barcode of barcodeResults) {
                 let points = barcode.localizationResult?.resultPoints || [];
-                if (points.length < 4 && barcode.localizationResult?.x1 !== undefined) {
-                    points = [
-                        [barcode.localizationResult.x1, barcode.localizationResult.y1],
-                        [barcode.localizationResult.x2, barcode.localizationResult.y1],
-                        [barcode.localizationResult.x2, barcode.localizationResult.y2],
-                        [barcode.localizationResult.x1, barcode.localizationResult.y2]
-                    ];
+                // if (points.length < 4 && barcode.localizationResult?.x1 !== undefined) {
+                //     points = [
+                //         [barcode.localizationResult.x1, barcode.localizationResult.y1],
+                //         [barcode.localizationResult.x2, barcode.localizationResult.y1],
+                //         [barcode.localizationResult.x2, barcode.localizationResult.y2],
+                //         [barcode.localizationResult.x1, barcode.localizationResult.y2]
+                //     ];
+                // }
+
+                // Ensure we have valid coordinates either from resultPoints or from x1/y1 properties
+                if (points.length < 4) {
+                    // Fallback mechanism when resultPoints aren't available
+                    if (barcode.localizationResult && 
+                        typeof barcode.localizationResult.x1 === 'number' && 
+                        typeof barcode.localizationResult.y1 === 'number' && 
+                        typeof barcode.localizationResult.x2 === 'number' && 
+                        typeof barcode.localizationResult.y2 === 'number') {
+                        
+                        points = [
+                            [barcode.localizationResult.x1, barcode.localizationResult.y1],
+                            [barcode.localizationResult.x2, barcode.localizationResult.y1],
+                            [barcode.localizationResult.x2, barcode.localizationResult.y2],
+                            [barcode.localizationResult.x1, barcode.localizationResult.y2]
+                        ];
+                    } else {
+                        // If we don't have valid coordinates, create default ones
+                        console.warn("Missing valid barcode coordinates, using defaults");
+                        points = [[0, 0], [100, 0], [100, 100], [0, 100]];
+                    }
                 }
 
-                // Calculate center coordinates of barcode
-                const centerX = points.reduce((sum, p) => sum + p[0], 0) / points.length;
-                const centerY = points.reduce((sum, p) => sum + p[1], 0) / points.length;
+                // Calculate center coordinates of barcode with additional error checking
+                let centerX = 0;
+                let centerY = 0;
+                
+                try {
+                    centerX = points.reduce((sum, p) => sum + (Array.isArray(p) && p.length >= 2 ? p[0] : 0), 0) / points.length;
+                    centerY = points.reduce((sum, p) => sum + (Array.isArray(p) && p.length >= 2 ? p[1] : 0), 0) / points.length;
+                } catch (error) {
+                    console.error("Error calculating barcode center:", error);
+                    centerX = 0;
+                    centerY = 0;
+                }
+
+                // // Calculate center coordinates of barcode
+                // const centerX = points.reduce((sum, p) => sum + p[0], 0) / points.length;
+                // const centerY = points.reduce((sum, p) => sum + p[1], 0) / points.length;
 
                 // Detect signature near the barcode
                 const sigResult = await detectSignature(canvas, points);
@@ -356,7 +403,7 @@ async function processImageWithDynamsoft(file) {
 
         // Decode barcodes with optimized settings
         const barcodeResults = await reader.decode(canvas, {
-            deblurLevel: 3,
+            deblurLevel: 5,
             scaleDownThreshold: 800,
             maxParallelTasks: 1,
             region: {
@@ -366,7 +413,12 @@ async function processImageWithDynamsoft(file) {
                 regionBottom: 90,
                 regionMeasuredByPercentage: 1
             }
+        }).catch(error => {
+            console.error("Decoding error:", error);
+            return [];
         });
+
+        console.log("Barcode results:", barcodeResults);
 
         // Process each detected barcode
         for (const barcode of barcodeResults) {
@@ -428,7 +480,16 @@ async function processImageWithDynamsoft(file) {
 function detectSignature(canvas, barcodeCoordinates) {
     if (!barcodeCoordinates || barcodeCoordinates.length < 4) {
         console.warn("⚠️ Barcode coordinates missing or invalid");
-        return { detected: false };
+        return { detected: false, confidence: 0 };
+    }
+
+    // Verify that all coordinates are arrays with at least 2 elements
+    for (const point of barcodeCoordinates) {
+        if (!Array.isArray(point) || point.length < 2 || 
+            typeof point[0] !== 'number' || typeof point[1] !== 'number') {
+            console.warn("⚠️ Invalid coordinate format in barcode");
+            return { detected: false, confidence: 0 };
+        }
     }
 
     // Calculate barcode bounding box
